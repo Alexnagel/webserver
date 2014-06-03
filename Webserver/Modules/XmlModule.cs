@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Security.Permissions;
 using System.Text;
 using System.Threading.Tasks;
 using System.Xml;
@@ -81,14 +82,28 @@ namespace Webserver.Modules
 
                 XmlElement mimeTypeText = doc.CreateElement("MimeText");
                 XmlText mimeText        = doc.CreateTextNode(mime.Value);
-                mimeFileName.AppendChild(mimeText);
+                mimeTypeText.AppendChild(mimeText);
                 mimeElement.AppendChild(mimeTypeText);
 
                 allowedTypes.AppendChild(mimeElement);
             }
             docRoot.AppendChild(allowedTypes);
-
-            doc.Save(filepath);
+            FileIOPermission permis = new FileIOPermission(FileIOPermissionAccess.AllAccess, Path.GetDirectoryName(filepath));
+            bool all = true;
+            permis.AllFiles = FileIOPermissionAccess.AllAccess;
+            try
+            {
+                  permis.Demand();    
+                  permis.PermitOnly();             
+            }
+            catch (System.Security.SecurityException ex)
+            {
+                  all = false;
+            }
+            if (all)
+            {
+                doc.Save(filepath);
+            }
         }
     }
 }

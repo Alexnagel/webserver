@@ -20,7 +20,6 @@ namespace Webserver.Modules
             {"DirectoryTraversal", "false"}
         };
 
-        private static const Dictionary<String, String> allowedMIMETypes = new Dictionary<String, String>()
         private static Dictionary<String, String> allowedMIMETypes = new Dictionary<String, String>()
         {
             {"bmp", "image/bmp"},
