@@ -48,17 +48,23 @@ namespace Webserver.Modules
 
         public void createSettingsXML(String filepath, Dictionary<String, String> settings, Dictionary<String, String> MIMETypes)
         {
+            if (!Directory.Exists(Path.GetDirectoryName(filepath)))
+                Directory.CreateDirectory(filepath);
+
+            XmlElement docRoot = doc.CreateElement("Settings");
+            doc.AppendChild(docRoot);
+
             XmlDeclaration xmlDeclaration = doc.CreateXmlDeclaration("1.0", "UTF-8", null);
             doc.InsertBefore(xmlDeclaration, doc.DocumentElement);
 
             // Add server settings
             foreach (KeyValuePair<String, String> setting in settings)
             {
-                XmlElement settingElement = doc.CreateElement(setting.Key);
-                XmlText settingText = doc.CreateTextNode(setting.Value);
-                settingElement.AppendChild(settingElement);
+                XmlElement settingElement   = doc.CreateElement(setting.Key);
+                XmlText settingText         = doc.CreateTextNode(setting.Value);
+                settingElement.AppendChild(settingText);
 
-                doc.AppendChild(settingElement);
+                docRoot.AppendChild(settingElement);
             }
 
             // Add allowed MIME types
@@ -66,21 +72,21 @@ namespace Webserver.Modules
 
             foreach(KeyValuePair<String, String> mime in MIMETypes)
             {
-                XmlElement mimeElement = doc.CreateElement("MimeItem");
+                XmlElement mimeElement  = doc.CreateElement("MimeItem");
                 
                 XmlElement mimeFileName = doc.CreateElement("FileName");
-                XmlText fileNameText = doc.CreateTextNode(mime.Key);
+                XmlText fileNameText    = doc.CreateTextNode(mime.Key);
                 mimeFileName.AppendChild(fileNameText);
                 mimeElement.AppendChild(mimeFileName);
 
                 XmlElement mimeTypeText = doc.CreateElement("MimeText");
-                XmlText mimeText = doc.CreateTextNode(mime.Value);
+                XmlText mimeText        = doc.CreateTextNode(mime.Value);
                 mimeFileName.AppendChild(mimeText);
                 mimeElement.AppendChild(mimeTypeText);
 
                 allowedTypes.AppendChild(mimeElement);
             }
-            doc.AppendChild(allowedTypes);
+            docRoot.AppendChild(allowedTypes);
 
             doc.Save(filepath);
         }

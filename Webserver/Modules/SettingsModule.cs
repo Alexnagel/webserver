@@ -10,15 +10,16 @@ namespace Webserver.Modules
 {
     public class SettingsModule : IPublicSettingsModule, IServerSettingsModule
     {
-        private static const String settingsLocation = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Data\\settings.xml");
-        private static const Dictionary<String, String> defaultSettings = new Dictionary<String, String>() 
+        private static String settingsLocation = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, @"Data\settings.xml");
+        private static Dictionary<String, String> defaultSettings = new Dictionary<String, String>() 
         {
             {"WebPortNumber", "8000"},
             {"ControlPortNumber", "8001"},
-            {"WebrootDirectory", "C:\\webserver\\www"},
-            {"DefaultPage", "index.html;index.htm"}
+            {"WebrootDirectory", @"C:\webserver\www"},
+            {"DefaultPage", "index.html;index.htm"},
+            {"DirectoryTraversal", "false"}
         };
-        private static const Dictionary<String, String> allowedMIMETypes = new Dictionary<String, String>()
+        private static Dictionary<String, String> allowedMIMETypes = new Dictionary<String, String>()
         {
             {"bmp", "image/bmp"},
             {"css", "text/css"},
