@@ -10,6 +10,6 @@ namespace Webserver.Interfaces
     {
         Dictionary<String, String> getAllowedMIMETypes();
 
-        List<String> getAllowedVirualDirs();
+        List<String> getAllowedVirtualDirs();
     }
 }
