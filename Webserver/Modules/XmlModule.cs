@@ -50,7 +50,7 @@ namespace Webserver.Modules
         public void createSettingsXML(String filepath, Dictionary<String, String> settings, Dictionary<String, String> MIMETypes)
         {
             if (!Directory.Exists(Path.GetDirectoryName(filepath)))
-                Directory.CreateDirectory(filepath);
+                Directory.CreateDirectory(Path.GetDirectoryName(filepath));
 
             XmlElement docRoot = doc.CreateElement("Settings");
             doc.AppendChild(docRoot);
