@@ -11,11 +11,37 @@ namespace Webserver.Modules
     public class SettingsModule : IPublicSettingsModule, IServerSettingsModule
     {
         private static const String settingsLocation = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Data\\settings.xml");
+        private static const Dictionary<String, String> defaultSettings = new Dictionary<String, String>() 
+        {
+            {"WebPortNumber", "8000"},
+            {"ControlPortNumber", "8001"},
+            {"WebrootDirectory", "C:\\webserver\\www"},
+            {"DefaultPage", "index.html;index.htm"}
+        };
+        private static const Dictionary<String, String> allowedMIMETypes = new Dictionary<String, String>()
+        {
+            {"bmp", "image/bmp"},
+            {"css", "text/css"},
+            {"gif", "image/gif"},
+            {"htm", "text/html"},
+            {"html", "text/html"},
+            {"jpe", "image/jpeg"},
+            {"jpeg", "image/jpeg"},
+            {"jpg", "image/jpeg"},
+            {"js", "application/x-javascript"},
+            {"png", "image/png"},
+            {"xhtml", "application/xhtml+xml"}
+        };
+
         private XmlModule xmlModule;
 
         public SettingsModule()
         {
-            xmlModule = new XmlModule(settingsLocation);
+            xmlModule = new XmlModule();
+            if (!xmlModule.setXmlDocument(settingsLocation))
+            {
+                xmlModule.createSettingsXML(settingsLocation, defaultSettings, allowedMIMETypes);
+            }
         }
 
         #region Public Settings
