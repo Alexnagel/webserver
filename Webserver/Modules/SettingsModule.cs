@@ -19,6 +19,8 @@ namespace Webserver.Modules
             {"DefaultPage", "index.html;index.htm"},
             {"DirectoryTraversal", "false"}
         };
+
+        private static const Dictionary<String, String> allowedMIMETypes = new Dictionary<String, String>()
         private static Dictionary<String, String> allowedMIMETypes = new Dictionary<String, String>()
         {
             {"bmp", "image/bmp"},
@@ -102,7 +104,7 @@ namespace Webserver.Modules
             throw new NotImplementedException();
         }
 
-        public List<string> getAllowedVirualDirs()
+        public List<string> getAllowedVirtualDirs()
         {
             throw new NotImplementedException();
         }
