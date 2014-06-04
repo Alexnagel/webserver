@@ -88,7 +88,7 @@ namespace Webserver
                 switch(requestType)
                 {
                     case "GET": ; break;
-                    case "POST": ; break;
+                    case "POS": ; break;
                     default: SendErrorPage(503, sHttpVersion, ref socketClient); return;
                 }
             }

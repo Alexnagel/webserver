@@ -18,7 +18,7 @@ namespace Webserver
             Server webServer;
             //Server controlServer;
 
-            Thread webServerThread = new Thread(() => { webServer = new Server(settingsModule, false); } );
+            Thread webServerThread = new Thread(() => { webServer = new Server(settingsModule); } );
             //Thread controlServerThread = new Thread(() => { controlServer = new Server(settingsModule, true); });
             webServerThread.Start();
             //controlServerThread.Start();

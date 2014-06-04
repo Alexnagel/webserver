@@ -88,23 +88,7 @@ namespace Webserver.Modules
                 allowedTypes.AppendChild(mimeElement);
             }
             docRoot.AppendChild(allowedTypes);
-
-            FileIOPermission permis = new FileIOPermission(FileIOPermissionAccess.AllAccess, Path.GetDirectoryName(filepath));
-            bool all = true;
-            permis.AllFiles = FileIOPermissionAccess.AllAccess;
-            try
-            {
-                  permis.Demand();    
-                  permis.PermitOnly();             
-            }
-            catch (System.Security.SecurityException ex)
-            {
-                  all = false;
-            }
-            if (all)
-            {
-                doc.Save(filepath);
-            }
+            doc.Save(filepath);
         }
     }
 }
