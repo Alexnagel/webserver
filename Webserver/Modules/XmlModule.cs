@@ -35,7 +35,7 @@ namespace Webserver.Modules
         {
             XmlNode node = doc.DocumentElement.SelectSingleNode("//" + elementName);
             if (node != null)
-                return node.Value;
+                return node.InnerText;
             else
                 return null;
         }
@@ -88,6 +88,7 @@ namespace Webserver.Modules
                 allowedTypes.AppendChild(mimeElement);
             }
             docRoot.AppendChild(allowedTypes);
+
             FileIOPermission permis = new FileIOPermission(FileIOPermissionAccess.AllAccess, Path.GetDirectoryName(filepath));
             bool all = true;
             permis.AllFiles = FileIOPermissionAccess.AllAccess;

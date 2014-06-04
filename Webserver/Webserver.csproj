@@ -53,6 +53,7 @@
     <Compile Include="Interfaces\IPublicSettingsModule.cs" />
     <Compile Include="Interfaces\IServerSettingsModule.cs" />
     <Compile Include="Modules\FileModule.cs" />
+    <Compile Include="Modules\LogModule.cs" />
     <Compile Include="Modules\SettingsModule.cs" />
     <Compile Include="Modules\XmlModule.cs" />
     <Compile Include="Program.cs" />
