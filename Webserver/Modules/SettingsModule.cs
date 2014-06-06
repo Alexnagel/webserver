@@ -78,7 +78,7 @@ namespace Webserver.Modules
 
         public string getWebroot()
         {
-            throw new NotImplementedException();
+            return xmlModule.getElement("WebrootDirectory");
         }
 
         public void setDefaultPage(List<string> defaultPages)
@@ -88,7 +88,8 @@ namespace Webserver.Modules
 
         public List<string> getDefaultPage()
         {
-            throw new NotImplementedException();
+            String defaultPages = xmlModule.getElement("DefaultPage");
+            return defaultPages.Split(';').ToList();
         }
 
         public bool saveSettings()
@@ -100,7 +101,7 @@ namespace Webserver.Modules
         #region Private Server Settings
         public Dictionary<string, string> getAllowedMIMETypes()
         {
-            throw new NotImplementedException();
+            return xmlModule.getMimeTypeDictionary();
         }
 
         public List<string> getAllowedVirtualDirs()

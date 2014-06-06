@@ -40,6 +40,25 @@ namespace Webserver.Modules
                 return null;
         }
 
+        public Dictionary<string, string> getMimeTypeDictionary()
+        {
+            XmlNode node = doc.DocumentElement.SelectSingleNode("//AllowedMIMETypes");
+            if (node != null)
+            {
+                Dictionary<string, string> mimeTypeDictionary = new Dictionary<string, string>();
+                foreach (XmlNode mimeNode in node.ChildNodes)
+                {
+                    String mimeFile = mimeNode.SelectSingleNode("FileName").InnerText;
+                    String mimeText = mimeNode.SelectSingleNode("MimeText").InnerText;
+                    mimeTypeDictionary.Add(mimeFile, mimeText);
+                }
+
+                return mimeTypeDictionary;
+            }
+            else
+                return null;
+        }
+
         public void setElement(String elementName, String value)
         {
             XmlNode node = doc.DocumentElement.SelectSingleNode("//" + elementName);

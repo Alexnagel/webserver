@@ -8,6 +8,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Webserver.Interfaces;
+using Webserver.Modules;
 
 namespace Webserver
 {
@@ -16,16 +17,23 @@ namespace Webserver
         private static IPAddress _serverIP;
         private static int       _listenPort;
 
-        private IPublicSettingsModule _settingsModule;
+        private IPublicSettingsModule _publicSettingsModule;
+        private IServerSettingsModule _serverSettingsModule;
 
         private TcpListener _tcpListener;
         private Boolean _isRunning;
 
+        // Dictionary for all mimetypes
+        private Dictionary<string, string> _allowedMimeTypes;
         public Server(IPublicSettingsModule settingsModule)
         {
-            // set the settingsModule
-            _settingsModule = settingsModule;
+            // set the settingsModules
+            _publicSettingsModule = settingsModule;
+            _serverSettingsModule = new SettingsModule();
             _serverIP = LocalIPAddress();
+            
+            // get allowed Mimetypes
+            _allowedMimeTypes = _serverSettingsModule.getAllowedMIMETypes();
 
             // Get port for corresponding server
             _listenPort = settingsModule.getWebPort();
@@ -82,12 +90,14 @@ namespace Webserver
 
                 // Look for HTTP request
                 int iStartPos = sBuffer.IndexOf("HTTP", 1);
-                string sHttpVersion = sBuffer.Substring(iStartPos, 8);
+                string sHttpVersion = null;
+                if(iStartPos >= 0)
+                    sHttpVersion = sBuffer.Substring(iStartPos, 8);
 
                 string requestType = sBuffer.Substring(0, 3);
                 switch(requestType)
                 {
-                    case "GET": ; break;
+                    case "GET": handleGetRequest(sBuffer.Substring(0,iStartPos -1), sHttpVersion, ref socketClient); break;
                     case "POS": ; break;
                     default: SendErrorPage(503, sHttpVersion, ref socketClient); return;
                 }
@@ -156,6 +166,106 @@ namespace Webserver
             
             sendHeader(sHttpVersion, "", bMessage.Length, " 200 OK", ref clientSocket);
             sendToBrowser(bMessage, ref clientSocket);
+            clientSocket.Close();
         }
+
+        private void handleGetRequest(String sRequest, String sHttpVersion, ref Socket clientSocket)
+        {
+            sRequest.Replace("\\", "/");
+
+            if((sRequest.IndexOf(".") < 1) && (!sRequest.EndsWith("/")))
+                sRequest += "/";
+
+            String sDirectoryName = sRequest.Substring(sRequest.IndexOf("/"), sRequest.LastIndexOf("/") - 3);
+            String sRequestedFile = sRequest.Substring(sRequest.LastIndexOf("/") + 1);
+
+            Console.WriteLine(sDirectoryName);
+            Console.WriteLine(sRequestedFile);
+
+            // Check if localpath exists
+            String localPath = getLocalPath(sDirectoryName);
+            if (String.IsNullOrEmpty(localPath))
+            {
+                SendErrorPage(404, sHttpVersion, ref clientSocket);
+                return;
+            }
+
+            // Check mimetype
+            String mimeType = getMimeType(sRequestedFile);
+            if (String.IsNullOrEmpty(mimeType))
+            {
+                SendErrorPage(404, sHttpVersion, ref clientSocket);
+                return;
+            }
+
+            // File to bytes
+            int iTotalBytes = 0;
+            String sResponse = "";
+            String sPhysicalFilePath = Path.Combine(localPath, sRequestedFile);
+
+            FileStream fs = new FileStream(sPhysicalFilePath, FileMode.Open, FileAccess.Read, FileShare.Read);
+
+            // Create byteReader
+            BinaryReader reader = new BinaryReader(fs);
+            byte[] bytes = new byte[fs.Length];
+            int read;
+            while((read = reader.Read(bytes,0, bytes.Length)) != 0)
+            {
+                sResponse += Encoding.ASCII.GetString(bytes, 0, read);
+                iTotalBytes += read;
+            }
+
+            reader.Close();
+            fs.Close();
+
+            sendHeader(sHttpVersion, mimeType, iTotalBytes, "200 OK", ref clientSocket);
+            sendToBrowser(sResponse, ref clientSocket);
+        }
+
+#region File methods
+        
+        private String getLocalPath(String sRequestedDirectory)
+        {
+            String webServerRoot = _publicSettingsModule.getWebroot();
+
+            // Remove spaces and lower case
+            sRequestedDirectory.Trim();
+            sRequestedDirectory = sRequestedDirectory.ToLower();
+
+            String localPath = webServerRoot;
+            if(!sRequestedDirectory.Equals("/"))
+                localPath = Path.Combine(webServerRoot,sRequestedDirectory);
+
+            if (!Directory.Exists(localPath))
+                return "";
+            else
+                return localPath;
+        }
+
+        private String getMimeType(String sRequestFile)
+        {
+            // Remove spaces and lower case
+            sRequestFile.Trim();
+            sRequestFile = sRequestFile.ToLower();
+
+            String fileExtension = Path.GetExtension(sRequestFile);
+            fileExtension = fileExtension.Replace(".", "");
+            Boolean mimeTypeAllowed = _allowedMimeTypes.ContainsKey(fileExtension);
+            
+            // Check if mimetype exists
+            if (!mimeTypeAllowed)
+                return "";
+            else
+                return _allowedMimeTypes.Where(pair => pair.Key.Equals(fileExtension)).First().Value;
+        }
+
+        private String getDefaultFileName(String sDirectoryName)
+        {
+            List<string> defaultPages = _publicSettingsModule.getDefaultPage();
+            return "";
+        }
+
+#endregion
+
     }
 }
