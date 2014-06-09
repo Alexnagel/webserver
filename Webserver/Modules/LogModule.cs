@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Net.Sockets;
 using System.Text;
@@ -16,10 +17,14 @@ namespace Webserver.Modules
             this._serverIP = serverIP;
         }
 
-        public void writeInfo(Socket client)
+        public void writeInfo(ref Socket client, String sDirectoryName, String sRequestedFile, String webserverRoot)
         {
             Socket socketClient = (Socket)client;
-            
+            Console.WriteLine("LOG : " + socketClient.AddressFamily + " " + socketClient.LocalEndPoint + sDirectoryName + sRequestedFile);
+            StreamWriter sw = new StreamWriter(webserverRoot + @"\Log\log.txt", true);
+            String line = "LOG : " + DateTime.Now + " " + client.LocalEndPoint + sDirectoryName + sRequestedFile;
+            sw.WriteLine(line);
+            sw.Close();
         }
     }
 }

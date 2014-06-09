@@ -88,7 +88,7 @@ namespace Webserver
 
             if (socketClient.Connected)
             {
-                _logModule.writeInfo(socketClient);
+                
                 Byte[] receivedBytes = new Byte[1024];
                 int i = socketClient.Receive(receivedBytes, receivedBytes.Length, 0);
 
@@ -184,6 +184,12 @@ namespace Webserver
 
             String sDirectoryName = sRequest.Substring(sRequest.IndexOf("/"), sRequest.LastIndexOf("/") - 3);
             String sRequestedFile = sRequest.Substring(sRequest.LastIndexOf("/") + 1);
+            
+            if (string.IsNullOrEmpty(sRequestedFile))
+            {
+                List<String> defaultPages = _publicSettingsModule.getDefaultPage();
+                sRequestedFile= defaultPages[0];
+            }
 
             Console.WriteLine(sDirectoryName);
             Console.WriteLine(sRequestedFile);
@@ -209,6 +215,7 @@ namespace Webserver
             String sResponse = "";
             String sPhysicalFilePath = Path.Combine(localPath, sRequestedFile);
 
+            // TODO error if not exists
             FileStream fs = new FileStream(sPhysicalFilePath, FileMode.Open, FileAccess.Read, FileShare.Read);
 
             // Create byteReader
@@ -223,6 +230,10 @@ namespace Webserver
 
             reader.Close();
             fs.Close();
+
+            // save get info
+            String webServerRoot = _publicSettingsModule.getWebroot();
+            _logModule.writeInfo(ref clientSocket, sDirectoryName, sRequestedFile, webServerRoot);
 
             sendHeader(sHttpVersion, mimeType, iTotalBytes, "200 OK", ref clientSocket);
             sendToBrowser(sResponse, ref clientSocket);
