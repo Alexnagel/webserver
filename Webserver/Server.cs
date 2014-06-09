@@ -19,6 +19,7 @@ namespace Webserver
 
         private IPublicSettingsModule _publicSettingsModule;
         private IServerSettingsModule _serverSettingsModule;
+        private LogModule _logModule;
 
         private TcpListener _tcpListener;
         private Boolean _isRunning;
@@ -32,6 +33,9 @@ namespace Webserver
             _serverSettingsModule = new SettingsModule();
             _serverIP = LocalIPAddress();
             
+            // set logger
+            _logModule = new LogModule(_serverIP.ToString());
+
             // get allowed Mimetypes
             _allowedMimeTypes = _serverSettingsModule.getAllowedMIMETypes();
 
@@ -64,7 +68,8 @@ namespace Webserver
         {
             _tcpListener.Start();
 
-            Console.WriteLine("Listening on: " + _serverIP + ":8000");
+            int webPortServer = _publicSettingsModule.getWebPort();
+            Console.WriteLine("Listening on: " + _serverIP + ":" + webPortServer);
 
             while (_isRunning)
             {
@@ -83,6 +88,7 @@ namespace Webserver
 
             if (socketClient.Connected)
             {
+                _logModule.writeInfo(socketClient);
                 Byte[] receivedBytes = new Byte[1024];
                 int i = socketClient.Receive(receivedBytes, receivedBytes.Length, 0);
 
