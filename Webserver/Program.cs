@@ -13,6 +13,11 @@ namespace Webserver
     {
         static void Main(string[] args)
         {
+            Console.CancelKeyPress += delegate
+            {
+                Environment.Exit(0);
+            };
+
             IPublicSettingsModule settingsModule = new SettingsModule();
 
             Server webServer = new Server(settingsModule);

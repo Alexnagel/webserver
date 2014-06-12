@@ -14,7 +14,10 @@ namespace Webserver
 {
     class Server
     {
-        private static Semaphore        _connectionSemaphore;
+        private const int INIT_THREADS = 20;
+        private const int MAX_THREADS = 20;
+
+        private static Semaphore _connectionSemaphore;
         private static IPAddress _serverIP;
         private static int       _listenPort;
 
@@ -30,7 +33,7 @@ namespace Webserver
         public Server(IPublicSettingsModule settingsModule)
         {
             // set the semaphore
-            _connectionSemaphore = new Semaphore(2, 2);
+            _connectionSemaphore = new Semaphore(INIT_THREADS, MAX_THREADS);
 
             // set the settingsModules
             _publicSettingsModule = settingsModule;
@@ -56,8 +59,9 @@ namespace Webserver
         {
             _tcpListener.Start();
 
-            int webPortServer = _publicSettingsModule.getWebPort();
-            Console.WriteLine("Listening on: " + _serverIP + ":" + webPortServer);
+            // Write in console program has started
+            Console.WriteLine("Webserver listening on: " + _serverIP + ":" + _listenPort);
+            Console.WriteLine("To exit press ctrl+c");
 
             while (_isRunning)
             {
@@ -114,7 +118,7 @@ namespace Webserver
                 sMIMEHeader = "text/html";  // Default Mime Type is text/html
             }
 
-            sBuffer = sBuffer + sHttpVersion + sStatusCode + "\r\n";
+            sBuffer = sBuffer + sHttpVersion + " " + sStatusCode + "\r\n";
             sBuffer = sBuffer + "Server: C#Server\r\n";
             sBuffer = sBuffer + "Content-Type: " + sMIMEHeader + "\r\n";
             sBuffer = sBuffer + "Accept-Ranges: bytes\r\n";
@@ -291,12 +295,6 @@ namespace Webserver
                 return "";
             else
                 return _allowedMimeTypes.Where(pair => pair.Key.Equals(fileExtension)).First().Value;
-        }
-
-        private String getDefaultFileName(String sDirectoryName)
-        {
-            List<string> defaultPages = _publicSettingsModule.getDefaultPage();
-            return "";
         }
 
 #endregion
