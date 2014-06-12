@@ -14,6 +14,7 @@ namespace Webserver
 {
     class Server
     {
+        private static Semaphore        _connectionSemaphore;
         private static IPAddress _serverIP;
         private static int       _listenPort;
 
@@ -28,10 +29,13 @@ namespace Webserver
         private Dictionary<string, string> _allowedMimeTypes;
         public Server(IPublicSettingsModule settingsModule)
         {
+            // set the semaphore
+            _connectionSemaphore = new Semaphore(2, 2);
+
             // set the settingsModules
             _publicSettingsModule = settingsModule;
             _serverSettingsModule = new SettingsModule();
-            _serverIP = LocalIPAddress();
+            _serverIP = IPAddress.Parse("127.0.0.1");
             
             // set logger
             _logModule = new LogModule(_serverIP.ToString());
@@ -44,24 +48,8 @@ namespace Webserver
 
             // Start the listener
             _isRunning = true;
-            _tcpListener = new TcpListener(LocalIPAddress(), _listenPort);
+            _tcpListener = new TcpListener(_serverIP, _listenPort);
             listenForClients();
-        }
-
-        public IPAddress LocalIPAddress()
-        {
-            IPHostEntry host;
-            IPAddress localIP = null;
-            host = Dns.GetHostEntry(Dns.GetHostName());
-            foreach (IPAddress ip in host.AddressList)
-            {
-                if (ip.AddressFamily == AddressFamily.InterNetwork)
-                {
-                    localIP = ip;
-                    break;
-                }
-            }
-            return localIP;
         }
 
         private void listenForClients()
@@ -73,6 +61,7 @@ namespace Webserver
 
             while (_isRunning)
             {
+                _connectionSemaphore.WaitOne();
                 // Accept clients
                 Socket client = _tcpListener.AcceptSocket();
 
@@ -93,21 +82,26 @@ namespace Webserver
                 int i = socketClient.Receive(receivedBytes, receivedBytes.Length, 0);
 
                 string sBuffer = Encoding.ASCII.GetString(receivedBytes);
+                sBuffer = sBuffer.Trim('\0');
 
-                // Look for HTTP request
-                int iStartPos = sBuffer.IndexOf("HTTP", 1);
-                string sHttpVersion = null;
-                if(iStartPos >= 0)
-                    sHttpVersion = sBuffer.Substring(iStartPos, 8);
-
-                string requestType = sBuffer.Substring(0, 3);
-                switch(requestType)
+                if (sBuffer.Length > 0)
                 {
-                    case "GET": handleGetRequest(sBuffer.Substring(0,iStartPos -1), sHttpVersion, ref socketClient); break;
-                    case "POS": ; break;
-                    default: SendErrorPage(503, sHttpVersion, ref socketClient); return;
+                    // Look for HTTP request
+                    int iStartPos = sBuffer.IndexOf("HTTP", 1);
+                    string sHttpVersion = null;
+                    if (iStartPos >= 0)
+                        sHttpVersion = sBuffer.Substring(iStartPos, 8);
+
+                    string requestType = sBuffer.Substring(0, 3);
+                    switch (requestType)
+                    {
+                        case "GET": handleGetRequest(sBuffer.Substring(0, iStartPos - 1), sHttpVersion, ref socketClient); break;
+                        case "POS": ; break;
+                        default: SendErrorPage(400, sHttpVersion, ref socketClient); return;
+                    }
                 }
             }
+            _connectionSemaphore.Release();
         }
 
         private void sendHeader(string sHttpVersion, string sMIMEHeader, int iTotBytes, string sStatusCode, ref Socket clientSocket)
@@ -121,7 +115,7 @@ namespace Webserver
             }
 
             sBuffer = sBuffer + sHttpVersion + sStatusCode + "\r\n";
-            sBuffer = sBuffer + "Server: cx1193719-b\r\n";
+            sBuffer = sBuffer + "Server: C#Server\r\n";
             sBuffer = sBuffer + "Content-Type: " + sMIMEHeader + "\r\n";
             sBuffer = sBuffer + "Accept-Ranges: bytes\r\n";
             sBuffer = sBuffer + "Content-Length: " + iTotBytes + "\r\n\r\n";
@@ -146,7 +140,9 @@ namespace Webserver
                     if ((numBytes = clientSocket.Send(bSendData, bSendData.Length, 0)) == -1)
                         Console.WriteLine("Socket Error cannot Send Packet");
                     else
+                    {
                         Console.WriteLine("No. of bytes send {0}", numBytes);
+                    }
                 }
                 else
                     Console.WriteLine("Connection Dropped....");
@@ -159,20 +155,24 @@ namespace Webserver
 
         public void SendErrorPage(int code, string sHttpVersion, ref Socket clientSocket)
         {
-            string eMessage = "";
+            string sErrorFolder = Path.Combine(Environment.CurrentDirectory, "Data\\Errors");
+            string sErrorFile = "";
+            string sErrorCode = "";
 
             switch(code)
             {
-                case 404: eMessage = "<h2>404 Page Not Found</h2>"; break;
-                case 503: eMessage = "<h2>This method isn't supported</h2>"; break;
+                case 404: sErrorFile = "404.html"; sErrorCode = "404 Not Found"; break;
+                case 400: sErrorFile = "400.html"; sErrorCode = "400 Bad Request"; break;
             }
 
+            String sErrorFilePath = Path.Combine(sErrorFolder, sErrorFile);
+            StreamReader sr = new StreamReader(sErrorFilePath);
+
             // Get the byte array 
-            Byte[] bMessage = Encoding.ASCII.GetBytes(eMessage);
+            Byte[] bMessage = Encoding.ASCII.GetBytes(sr.ReadToEnd());
             
-            sendHeader(sHttpVersion, "", bMessage.Length, " 200 OK", ref clientSocket);
+            sendHeader(sHttpVersion, "", bMessage.Length, sErrorCode, ref clientSocket);
             sendToBrowser(bMessage, ref clientSocket);
-            clientSocket.Close();
         }
 
         private void handleGetRequest(String sRequest, String sHttpVersion, ref Socket clientSocket)
@@ -184,12 +184,6 @@ namespace Webserver
 
             String sDirectoryName = sRequest.Substring(sRequest.IndexOf("/"), sRequest.LastIndexOf("/") - 3);
             String sRequestedFile = sRequest.Substring(sRequest.LastIndexOf("/") + 1);
-            
-            if (string.IsNullOrEmpty(sRequestedFile))
-            {
-                List<String> defaultPages = _publicSettingsModule.getDefaultPage();
-                sRequestedFile= defaultPages[0];
-            }
 
             Console.WriteLine(sDirectoryName);
             Console.WriteLine(sRequestedFile);
@@ -202,7 +196,21 @@ namespace Webserver
                 return;
             }
 
-            // Check mimetype
+            // Check if file is given, get default file if not given
+            if (string.IsNullOrEmpty(sRequestedFile))
+            {
+                List<String> defaultPages = _publicSettingsModule.getDefaultPage();
+                foreach (String defaultPage in defaultPages)
+                {
+                    if (File.Exists(Path.Combine(localPath, defaultPage)))
+                    {
+                        sRequestedFile = defaultPage;
+                        break;
+                    }
+                }
+            }
+
+            // Check file mimetype
             String mimeType = getMimeType(sRequestedFile);
             if (String.IsNullOrEmpty(mimeType))
             {
@@ -215,8 +223,16 @@ namespace Webserver
             String sResponse = "";
             String sPhysicalFilePath = Path.Combine(localPath, sRequestedFile);
 
-            // TODO error if not exists
-            FileStream fs = new FileStream(sPhysicalFilePath, FileMode.Open, FileAccess.Read, FileShare.Read);
+            FileStream fs = null;
+            if (File.Exists(sPhysicalFilePath))
+            {
+                fs = new FileStream(sPhysicalFilePath, FileMode.Open, FileAccess.Read, FileShare.Read);
+            }
+            else
+            {
+                SendErrorPage(404, sHttpVersion, ref clientSocket);
+                return;
+            }
 
             // Create byteReader
             BinaryReader reader = new BinaryReader(fs);
@@ -235,6 +251,7 @@ namespace Webserver
             String webServerRoot = _publicSettingsModule.getWebroot();
             _logModule.writeInfo(ref clientSocket, sDirectoryName, sRequestedFile, webServerRoot);
 
+            // Write data to the browser
             sendHeader(sHttpVersion, mimeType, iTotalBytes, "200 OK", ref clientSocket);
             sendToBrowser(sResponse, ref clientSocket);
         }
