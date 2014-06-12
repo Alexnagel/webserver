@@ -68,7 +68,11 @@ namespace Webserver.Modules
 
         public int getControlPort()
         {
-            throw new NotImplementedException();
+            String controlPortNumber = xmlModule.getElement("ControlPortNumber");
+            if (controlPortNumber == null)
+                return 0;
+            else
+                return int.Parse(controlPortNumber);
         }
 
         public void setWebroot(string rootDirectory)

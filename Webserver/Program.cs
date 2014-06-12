@@ -14,14 +14,13 @@ namespace Webserver
         static void Main(string[] args)
         {
             IPublicSettingsModule settingsModule = new SettingsModule();
-
-            Server webServer = new Server(settingsModule);
-            //Server controlServer;
-
-            //Thread webServerThread = new Thread(() => { webServer = new Server(settingsModule); } );
-            //Thread controlServerThread = new Thread(() => { controlServer = new Server(settingsModule, true); });
-            //webServerThread.Start();
-            //controlServerThread.Start();
+            
+            //Create threads for each server
+            Thread controlServerThread = new Thread(() => new ControlServer2(settingsModule));
+            controlServerThread.Start();
+            Thread webServerThread = new Thread(() => new Server(settingsModule));
+            webServerThread.Start();
+            
         }
     }
 }
