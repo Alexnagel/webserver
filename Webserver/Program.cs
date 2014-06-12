@@ -15,12 +15,12 @@ namespace Webserver
         {
             IPublicSettingsModule settingsModule = new SettingsModule();
 
-            Server webServer;
+            Server webServer = new Server(settingsModule);
             //Server controlServer;
 
-            Thread webServerThread = new Thread(() => { webServer = new Server(settingsModule); } );
+            //Thread webServerThread = new Thread(() => { webServer = new Server(settingsModule); } );
             //Thread controlServerThread = new Thread(() => { controlServer = new Server(settingsModule, true); });
-            webServerThread.Start();
+            //webServerThread.Start();
             //controlServerThread.Start();
         }
     }

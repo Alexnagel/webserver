@@ -21,10 +21,10 @@ namespace Webserver.Modules
         {
             Socket socketClient = (Socket)client;
             Console.WriteLine("LOG : " + socketClient.AddressFamily + " " + socketClient.LocalEndPoint + sDirectoryName + sRequestedFile);
-            StreamWriter sw = new StreamWriter(webserverRoot + @"\Log\log.txt", true);
-            String line = "LOG : " + DateTime.Now + " " + client.LocalEndPoint + sDirectoryName + sRequestedFile;
-            sw.WriteLine(line);
-            sw.Close();
+            //StreamWriter sw = new StreamWriter(webserverRoot + @"\Log\log.txt", true);
+            //String line = "LOG : " + DateTime.Now + " " + client.LocalEndPoint + sDirectoryName + sRequestedFile;
+            //sw.WriteLine(line);
+            //sw.Close();
         }
     }
 }
