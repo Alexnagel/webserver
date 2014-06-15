@@ -96,6 +96,15 @@ namespace Webserver.Modules
             return defaultPages.Split(';').ToList();
         }
 
+        public List<string> getControlDefaultPage()
+        {
+            List<string> defaultPages = new List<string>();
+            defaultPages.Add("login.html");
+            defaultPages.Add("login.htm");
+
+            return defaultPages;
+        }
+
         public bool saveSettings()
         {
             throw new NotImplementedException();

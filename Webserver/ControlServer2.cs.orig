@@ -79,14 +79,26 @@ namespace Webserver
             if (socketClient.Connected)
             {
                 SslStream sslStream = new SslStream(new NetworkStream(socketClient), false);
+<<<<<<< HEAD
                 sslStream.ReadTimeout = 100;
                 sslStream.WriteTimeout = 100;
 
                 byte[] buffer = new byte[2048];
                 StringBuilder messageData = new StringBuilder();
-                bytes = -1;
 
                 try
+=======
+                sslStream.ReadTimeout = 100000;
+                sslStream.WriteTimeout = 100000;
+                
+                sslStream.AuthenticateAsServer(certificate);
+
+                byte[] buffer = new byte[2048];
+                StringBuilder messageData = new StringBuilder();
+                bytes = -1;
+                
+                while (bytes <= 0)
+>>>>>>> 80f25b6fce8a40b794df0a80ac31bd44b6ba051c
                 {
                     sslStream.AuthenticateAsServer(certificate, false, SslProtocols.Ssl3, true);
 

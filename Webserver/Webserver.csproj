@@ -41,8 +41,10 @@
     <ApplicationManifest>Properties\app.manifest</ApplicationManifest>
   </PropertyGroup>
   <ItemGroup>
+    <Reference Include="MySql.Data, Version=6.8.3.0, Culture=neutral, PublicKeyToken=c5687fc88969c44d, processorArchitecture=MSIL" />
     <Reference Include="System" />
     <Reference Include="System.Core" />
+    <Reference Include="System.Windows.Forms" />
     <Reference Include="System.Xml.Linq" />
     <Reference Include="System.Data.DataSetExtensions" />
     <Reference Include="Microsoft.CSharp" />
@@ -54,6 +56,7 @@
     <Compile Include="Interfaces\IPublicSettingsModule.cs" />
     <Compile Include="Interfaces\IServerSettingsModule.cs" />
     <Compile Include="Modules\LogModule.cs" />
+    <Compile Include="Modules\MySqlModule.cs" />
     <Compile Include="Modules\SettingsModule.cs" />
     <Compile Include="Modules\XmlModule.cs" />
     <Compile Include="Program.cs" />
