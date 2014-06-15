@@ -24,6 +24,8 @@ namespace Webserver.Interfaces
 
         List<String> getDefaultPage();
 
+        List<String> getControlDefaultPage();
+
         Boolean saveSettings();
     }
 }

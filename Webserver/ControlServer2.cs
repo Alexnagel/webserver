@@ -38,6 +38,8 @@ namespace Webserver
 
         public ControlServer2(IPublicSettingsModule settingsModule)
         {
+            // Connect DB
+            new MySqlModule();
             // set the settingsmodules
             _publicSettingsModule = settingsModule;
             _serverSettingsModule = new SettingsModule();
@@ -79,10 +81,11 @@ namespace Webserver
                 sslStream.ReadTimeout = 100000;
                 sslStream.WriteTimeout = 100000;
                 
-                sslStream.AuthenticateAsServer(certificate,false,SslProtocols.Ssl3,true);
+                sslStream.AuthenticateAsServer(certificate);
 
                 byte[] buffer = new byte[2048];
                 StringBuilder messageData = new StringBuilder();
+                bytes = -1;
                 
                 while (bytes <= 0)
                 {
@@ -226,7 +229,7 @@ namespace Webserver
             // Check if file is given, get default file if not given
             if (string.IsNullOrEmpty(sRequestedFile))
             {
-                List<String> defaultPages = _publicSettingsModule.getDefaultPage();
+                List<String> defaultPages = _publicSettingsModule.getControlDefaultPage();
                 foreach (String defaultPage in defaultPages)
                 {
                     if (File.Exists(Path.Combine(localPath, defaultPage)))
