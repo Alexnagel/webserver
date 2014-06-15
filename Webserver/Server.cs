@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Net;
+using System.Net.Security;
 using System.Net.Sockets;
 using System.Text;
 using System.Threading;
@@ -61,7 +62,6 @@ namespace Webserver
 
             // Write in console program has started
             Console.WriteLine("Webserver listening on: " + _serverIP + ":" + _listenPort);
-            Console.WriteLine("To exit press ctrl+c");
 
             while (_isRunning)
             {
@@ -81,7 +81,6 @@ namespace Webserver
 
             if (socketClient.Connected)
             {
-                
                 Byte[] receivedBytes = new Byte[1024];
                 int i = socketClient.Receive(receivedBytes, receivedBytes.Length, 0);
 
@@ -96,11 +95,11 @@ namespace Webserver
                     if (iStartPos >= 0)
                         sHttpVersion = sBuffer.Substring(iStartPos, 8);
 
-                    string requestType = sBuffer.Substring(0, 3);
+                    string requestType = sBuffer.Substring(0, 4).Trim();
                     switch (requestType)
                     {
                         case "GET": handleGetRequest(sBuffer.Substring(0, iStartPos - 1), sHttpVersion, ref socketClient); break;
-                        case "POS": ; break;
+                        case "POST": ; break;
                         default: SendErrorPage(400, sHttpVersion, ref socketClient); return;
                     }
                 }

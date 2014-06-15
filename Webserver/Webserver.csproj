@@ -62,8 +62,12 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="App.config" />
-    <None Include="Data\ServerCA.cer" />
-    <None Include="Data\webserverCA.pfx" />
+    <EmbeddedResource Include="Data\ServerCA.cer">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Data\webserverCA.pfx">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </EmbeddedResource>
     <None Include="Properties\app.manifest" />
   </ItemGroup>
   <ItemGroup>

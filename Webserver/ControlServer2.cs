@@ -17,6 +17,9 @@ namespace Webserver
 {
     class ControlServer2
     {
+        private const string CERTIFICATE_PATH = @"Data\webserverCA.pfx";
+        private const string CERTIFICATE_PASSWORD = "webserver";
+
         private static IPAddress _serverIP;
         private static int       _listenPort;
 
@@ -28,11 +31,9 @@ namespace Webserver
         private Dictionary<string, string> _allowedMimeTypes;
 
         private TcpListener _tcpListener;
-        private Boolean _isRunning;
-        private static string Certificate = @"Data\ServerCA.cer";
-
-        //private X509Certificate certificate = X509Certificate.CreateFromCertFile(Certificate);
-        private X509Certificate certificate = new X509Certificate2(Certificate);
+        private Boolean     _isRunning;
+        
+        private X509Certificate certificate;
 
         private int bytes = -1;
 
@@ -45,7 +46,7 @@ namespace Webserver
             // set ip adress
             _serverIP = IPAddress.Parse("127.0.0.1");
 
-            certificate = new X509Certificate2(@"Data\webserverCA.pfx", "webserver");
+            certificate = new X509Certificate2(CERTIFICATE_PATH, CERTIFICATE_PASSWORD);
 
             // set allowed mimetypes
             _allowedMimeTypes = _serverSettingsModule.getAllowedMIMETypes();
@@ -76,51 +77,65 @@ namespace Webserver
             if (socketClient.Connected)
             {
                 SslStream sslStream = new SslStream(new NetworkStream(socketClient), false);
-                sslStream.ReadTimeout = 100000;
-                sslStream.WriteTimeout = 100000;
-                
-                sslStream.AuthenticateAsServer(certificate,false,SslProtocols.Ssl3,true);
+                sslStream.ReadTimeout = 100;
+                sslStream.WriteTimeout = 100;
 
                 byte[] buffer = new byte[2048];
                 StringBuilder messageData = new StringBuilder();
-                
-                while (bytes <= 0)
+
+                try
                 {
-                    bytes = sslStream.Read(buffer, 0, buffer.Length);
-                    Console.WriteLine("bytes : " + bytes);
-                    // Use Decoder class to convert from bytes to UTF8 
-                    // in case a character spans two buffers.
-                    Decoder decoder = Encoding.UTF8.GetDecoder();
-                    char[] chars = new char[decoder.GetCharCount(buffer, 0, bytes)];
-                    Console.WriteLine("chars : " + chars.ToString());
-                    decoder.GetChars(buffer, 0, bytes, chars, 0);
-                    messageData.Append(chars);
-                    Console.WriteLine(messageData);
-                    // Check for EOF. 
-                    if (messageData.ToString().IndexOf("<EOF>") != -1)
+                    sslStream.AuthenticateAsServer(certificate, false, SslProtocols.Ssl3, true);
+
+                    do
                     {
-                        break;
+                        bytes = sslStream.Read(buffer, 0, buffer.Length);
+                        Decoder decoder = Encoding.UTF8.GetDecoder();
+                        char[] chars = new char[decoder.GetCharCount(buffer, 0, bytes)];
+
+                        decoder.GetChars(buffer, 0, bytes, chars, 0);
+                        messageData.Append(chars);
+                        Console.WriteLine(messageData.ToString());
+
+                        String sBuffer = messageData.ToString();
+                        if (sBuffer.Length > 3)
+                        {
+                            // Look for HTTP request
+                            int iStartPos = sBuffer.IndexOf("HTTP", 1);
+                            string sHttpVersion = null;
+                            if (iStartPos >= 0)
+                                sHttpVersion = sBuffer.Substring(iStartPos, 8);
+
+                            string requestType = sBuffer.Substring(0, 4).Trim();
+                            switch (requestType)
+                            {
+                                case "GET": handleGetRequest(sBuffer.Substring(0, iStartPos - 1), sHttpVersion, ref socketClient, bytes, sslStream); break;
+                                case "POST": ; break;
+                                default: SendErrorPage(400, sHttpVersion, ref socketClient, bytes, sslStream); return;
+                            }
+
+                        }
+
+                        // Check for EOF. 
+                        if (messageData.ToString().IndexOf("\r\n") != -1)
+                        {
+                            break;
+                        }
                     }
+                    while (bytes != 0);
                 }
-
-                String sBuffer = messageData.ToString();
-                Console.WriteLine("Buffer : " + sBuffer);
-                if (sBuffer.Length > 3)
+                catch (AuthenticationException ex)
                 {
-                    // Look for HTTP request
-                    int iStartPos = sBuffer.IndexOf("HTTP", 1);
-                    string sHttpVersion = null;
-                    if (iStartPos >= 0)
-                        sHttpVersion = sBuffer.Substring(iStartPos, 8);
-
-                    string requestType = sBuffer.Substring(0, 3);
-                    switch (requestType)
-                    {
-                        case "GET": handleGetRequest(sBuffer.Substring(0, iStartPos - 1), sHttpVersion, ref socketClient, bytes,sslStream); break;
-                        case "POS": ; break;
-                        default: SendErrorPage(400, sHttpVersion, ref socketClient,bytes, sslStream); return;
-                    }
-                    
+                    Console.WriteLine(ex);
+                }
+                catch (IOException e)
+                {
+                    Console.WriteLine(e);
+                }
+                finally
+                {
+                    sslStream.Close();
+                    socketClient.Close();
                 }
             }
         }
@@ -160,15 +175,13 @@ namespace Webserver
                 if (clientSocket.Connected)
                 {
                     
-                    //numBytes = clientSocket.Send(bSendData, bytes, 0);
                     sslStream.Write(bSendData);
                     sslStream.Flush();
+
                     if(numBytes == -1)
                         Console.WriteLine("Socket Error cannot Send Packet");
                     else
-                    {
                         Console.WriteLine("No. of bytes send {0}", numBytes);
-                    }
                 }
                 else
                     Console.WriteLine("Connection Dropped....");
