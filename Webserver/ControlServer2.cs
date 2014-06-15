@@ -224,8 +224,11 @@ namespace Webserver
 
             if ((sRequest.IndexOf(".") < 1) && (!sRequest.EndsWith("/")))
                 sRequest += "/";
-
-            String sDirectoryName = sRequest.Substring(sRequest.IndexOf("/"), sRequest.LastIndexOf("/") - 3);
+            
+            String sRequestDirectoryName = sRequest.Substring(sRequest.IndexOf("/"), sRequest.LastIndexOf("/") - 3);
+            sRequestDirectoryName = (sRequestDirectoryName.Equals("/")) ? "" : sRequestDirectoryName;
+            
+            String sDirectoryName = Path.Combine("control", sRequestDirectoryName);
             String sRequestedFile = sRequest.Substring(sRequest.LastIndexOf("/") + 1);
 
             Console.WriteLine(sDirectoryName);
