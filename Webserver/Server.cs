@@ -61,7 +61,6 @@ namespace Webserver
 
             // Write in console program has started
             Console.WriteLine("Webserver listening on: " + _serverIP + ":" + _listenPort);
-            Console.WriteLine("To exit press ctrl+c");
 
             while (_isRunning)
             {

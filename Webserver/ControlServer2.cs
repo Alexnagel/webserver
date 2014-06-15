@@ -62,7 +62,7 @@ namespace Webserver
         {
             _tcpListener.Start();
             Console.WriteLine("Controlserver listening on: " + _serverIP + ":" + _listenPort);
-
+            Console.WriteLine("To exit press Ctrl+c");
             while(_isRunning)
             {
                 Socket client = _tcpListener.AcceptSocket();

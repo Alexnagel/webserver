@@ -25,7 +25,6 @@ namespace Webserver
             controlServerThread.Start();
             Thread webServerThread = new Thread(() => new Server(settingsModule));
             webServerThread.Start();
-            
         }
     }
 }
