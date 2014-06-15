@@ -80,7 +80,7 @@ namespace Webserver
                 SslStream sslStream = new SslStream(new NetworkStream(socketClient), false);
                 sslStream.ReadTimeout = 100000;
                 sslStream.WriteTimeout = 100000;
-                
+                ServicePointManager.SecurityProtocol = SecurityProtocolType.Ssl3;
                 sslStream.AuthenticateAsServer(certificate);
 
                 byte[] buffer = new byte[2048];
