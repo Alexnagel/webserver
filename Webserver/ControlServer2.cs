@@ -81,6 +81,7 @@ namespace Webserver
                 SslStream sslStream = new SslStream(new NetworkStream(socketClient), false);
                 sslStream.ReadTimeout = 100;
                 sslStream.WriteTimeout = 100;
+                ServicePointManager.SecurityProtocol = SecurityProtocolType.Ssl3;
 
                 byte[] buffer = new byte[2048];
                 StringBuilder messageData = new StringBuilder();
@@ -88,7 +89,7 @@ namespace Webserver
 
                 try
                 {
-                    sslStream.AuthenticateAsServer(certificate, false, SslProtocols.Ssl3, true);
+                    sslStream.AuthenticateAsServer(certificate);
 
                     do
                     {
@@ -177,7 +178,6 @@ namespace Webserver
             {
                 if (clientSocket.Connected)
                 {
-                    
                     sslStream.Write(bSendData);
                     sslStream.Flush();
 
