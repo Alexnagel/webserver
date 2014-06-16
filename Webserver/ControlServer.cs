@@ -213,78 +213,6 @@ namespace Webserver
             sendToBrowser(bResponse, sslStream);
         }
 
-        private void sendHeader(string sHttpVersion, string sMIMEHeader, int iTotBytes, string sStatusCode, SslStream sslStream)
-        {
-            String sBuffer = "";
-
-            // if Mime type is not provided set default to text/html
-            if (sMIMEHeader.Length == 0)
-            {
-                sMIMEHeader = "text/html";  // Default Mime Type is text/html
-            }
-
-            sBuffer = sBuffer + sHttpVersion + sStatusCode + "\r\n";
-            sBuffer = sBuffer + "Server: C#Server\r\n";
-            sBuffer = sBuffer + "Content-Type: " + sMIMEHeader + "\r\n";
-            sBuffer = sBuffer + "Accept-Ranges: bytes\r\n";
-            sBuffer = sBuffer + "Content-Length: " + iTotBytes + "\r\n\r\n";
-
-            Byte[] bSendData = Encoding.ASCII.GetBytes(sBuffer);
-
-            sendToBrowser(bSendData, sslStream);
-        }
-
-        private void sendToBrowser(String sSendData, SslStream sslStream)
-        {
-            sendToBrowser(Encoding.ASCII.GetBytes(sSendData), sslStream);
-        }
-
-        private void sendToBrowser(Byte[] bSendData, SslStream sslStream)
-        {
-            try
-            {
-                sslStream.Write(bSendData);
-            }
-            catch (Exception e)
-            {
-                Console.WriteLine("Error Occurred : {0} ", e);
-            }
-        }
-
-        public void SendErrorPage(int code, string sHttpVersion, SslStream sslStream)
-        {
-            string sErrorFolder = Path.Combine(Environment.CurrentDirectory, "Data\\Errors");
-            string sErrorFile = "";
-            string sErrorCode = "";
-
-            switch (code)
-            {
-                case 404: sErrorFile = "404.html"; sErrorCode = "404 Not Found"; break;
-                case 400: sErrorFile = "400.html"; sErrorCode = "400 Bad Request"; break;
-            }
-
-            String sErrorFilePath = Path.Combine(sErrorFolder, sErrorFile);
-            StreamReader sr = new StreamReader(sErrorFilePath);
-
-            // Get the byte array 
-            Byte[] bMessage = Encoding.ASCII.GetBytes(sr.ReadToEnd());
-
-            sendHeader(sHttpVersion, "", bMessage.Length, sErrorCode, sslStream);
-            sendToBrowser(bMessage, sslStream);
-        }
-
-        #region File methods
-
-        public String CombinePaths(params string[] PathsToCombine)
-        {
-            string[] trimmedPaths = new string[PathsToCombine.Length];
-            for (int i = 0; i < PathsToCombine.Length; i++)
-            {
-                trimmedPaths[i] = PathsToCombine[i].TrimStart('/');
-            }
-            return Path.Combine(trimmedPaths);
-        }
-
         private void handlePostRequest(String sRequest, String sHttpVersion, SslStream sslStream)
         {
             int newByte = bytes;
@@ -369,6 +297,78 @@ namespace Webserver
             // Write data to the browser
             sendHeader(sHttpVersion, mimeType, iTotalBytes, "200 OK", sslStream);
             sendToBrowser(sResponse, sslStream);
+        }
+
+        private void sendHeader(string sHttpVersion, string sMIMEHeader, int iTotBytes, string sStatusCode, SslStream sslStream)
+        {
+            String sBuffer = "";
+
+            // if Mime type is not provided set default to text/html
+            if (sMIMEHeader.Length == 0)
+            {
+                sMIMEHeader = "text/html";  // Default Mime Type is text/html
+            }
+
+            sBuffer = sBuffer + sHttpVersion + sStatusCode + "\r\n";
+            sBuffer = sBuffer + "Server: C#Server\r\n";
+            sBuffer = sBuffer + "Content-Type: " + sMIMEHeader + "\r\n";
+            sBuffer = sBuffer + "Accept-Ranges: bytes\r\n";
+            sBuffer = sBuffer + "Content-Length: " + iTotBytes + "\r\n\r\n";
+
+            Byte[] bSendData = Encoding.ASCII.GetBytes(sBuffer);
+
+            sendToBrowser(bSendData, sslStream);
+        }
+
+        private void sendToBrowser(String sSendData, SslStream sslStream)
+        {
+            sendToBrowser(Encoding.ASCII.GetBytes(sSendData), sslStream);
+        }
+
+        private void sendToBrowser(Byte[] bSendData, SslStream sslStream)
+        {
+            try
+            {
+                sslStream.Write(bSendData);
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine("Error Occurred : {0} ", e);
+            }
+        }
+
+        public void SendErrorPage(int code, string sHttpVersion, SslStream sslStream)
+        {
+            string sErrorFolder = Path.Combine(Environment.CurrentDirectory, "Data\\Errors");
+            string sErrorFile = "";
+            string sErrorCode = "";
+
+            switch (code)
+            {
+                case 404: sErrorFile = "404.html"; sErrorCode = "404 Not Found"; break;
+                case 400: sErrorFile = "400.html"; sErrorCode = "400 Bad Request"; break;
+            }
+
+            String sErrorFilePath = Path.Combine(sErrorFolder, sErrorFile);
+            StreamReader sr = new StreamReader(sErrorFilePath);
+
+            // Get the byte array 
+            Byte[] bMessage = Encoding.ASCII.GetBytes(sr.ReadToEnd());
+
+            sendHeader(sHttpVersion, "", bMessage.Length, sErrorCode, sslStream);
+            sendToBrowser(bMessage, sslStream);
+        }
+
+        #region File methods
+
+        public String CombinePaths(params string[] PathsToCombine)
+        {
+            string[] trimmedPaths = new string[PathsToCombine.Length];
+            for (int i = 0; i < PathsToCombine.Length; i++)
+            {
+                trimmedPaths[i] = PathsToCombine[i].TrimStart('/');
+            }
+            return Path.Combine(trimmedPaths);
         }
 
         private String getLocalPath(String sRequestedDirectory)
