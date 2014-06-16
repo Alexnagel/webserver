@@ -52,7 +52,7 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="ControlServer2.cs" />
+    <Compile Include="ControlServer.cs" />
     <Compile Include="Interfaces\IPublicSettingsModule.cs" />
     <Compile Include="Interfaces\IServerSettingsModule.cs" />
     <Compile Include="Modules\LogModule.cs" />

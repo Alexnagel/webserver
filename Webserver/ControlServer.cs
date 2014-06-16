@@ -15,7 +15,7 @@ using Webserver.Modules;
 
 namespace Webserver
 {
-    class ControlServer2
+    class ControlServer
     {
         private const string CERTIFICATE_PATH = @"Data\webserverCA.pfx";
         private const string CERTIFICATE_PASSWORD = "webserver";
@@ -37,7 +37,7 @@ namespace Webserver
 
         private int bytes = -1;
 
-        public ControlServer2(IPublicSettingsModule settingsModule)
+        public ControlServer(IPublicSettingsModule settingsModule)
         {
             // Connect DB
             new MySqlModule();
@@ -66,85 +66,84 @@ namespace Webserver
 
             while(_isRunning)
             {
-                Socket client = _tcpListener.AcceptSocket();
-
+                //Socket client = _tcpListener.AcceptSocket();
+                TcpClient tcpclient = _tcpListener.AcceptTcpClient();
+                
                 Thread clientThread = new Thread(new ParameterizedThreadStart(handleClient));
-                clientThread.Start(client);
+                clientThread.Start(tcpclient);
             }
         }
 
         private void handleClient(object client)
         {
-            Socket socketClient = (Socket)client;
-            if (socketClient.Connected)
+            //Socket socketClient = (Socket)client;
+            TcpClient tcpclient = (TcpClient)client;
+
+            SslStream sslStream = new SslStream(tcpclient.GetStream(), false);
+            sslStream.ReadTimeout = 100;
+            sslStream.WriteTimeout = 100;
+            ServicePointManager.SecurityProtocol = SecurityProtocolType.Ssl3;
+
+            byte[] buffer = new byte[2048];
+            StringBuilder messageData = new StringBuilder();
+            bytes = 0;
+
+            try
             {
-                SslStream sslStream = new SslStream(new NetworkStream(socketClient), false);
-                sslStream.ReadTimeout = 100;
-                sslStream.WriteTimeout = 100;
-                ServicePointManager.SecurityProtocol = SecurityProtocolType.Ssl3;
-
-                byte[] buffer = new byte[2048];
-                StringBuilder messageData = new StringBuilder();
-                bytes = -1;
-
-                try
+                sslStream.AuthenticateAsServer(certificate);
+                do
                 {
-                    sslStream.AuthenticateAsServer(certificate);
+                    bytes = sslStream.Read(buffer, 0, buffer.Length);
+                    Decoder decoder = Encoding.UTF8.GetDecoder();
+                    char[] chars = new char[decoder.GetCharCount(buffer, 0, bytes)];
 
-                    do
+                    decoder.GetChars(buffer, 0, bytes, chars, 0);
+                    messageData.Append(chars);
+                    Console.WriteLine(messageData.ToString());
+
+                    String sBuffer = messageData.ToString();
+                    sBuffer = sBuffer.Trim('\0');
+
+                    if (sBuffer.Length > 3)
                     {
-                        bytes = sslStream.Read(buffer, 0, buffer.Length);
-                        Decoder decoder = Encoding.UTF8.GetDecoder();
-                        char[] chars = new char[decoder.GetCharCount(buffer, 0, bytes)];
+                        // Look for HTTP request
+                        int iStartPos = sBuffer.IndexOf("HTTP", 1);
+                        string sHttpVersion = null;
+                        if (iStartPos >= 0)
+                            sHttpVersion = sBuffer.Substring(iStartPos, 8);
 
-                        decoder.GetChars(buffer, 0, bytes, chars, 0);
-                        messageData.Append(chars);
-                        Console.WriteLine(messageData.ToString());
-
-                        String sBuffer = messageData.ToString();
-                        if (sBuffer.Length > 3)
+                        string requestType = sBuffer.Substring(0, 4).Trim();
+                        switch (requestType)
                         {
-                            // Look for HTTP request
-                            int iStartPos = sBuffer.IndexOf("HTTP", 1);
-                            string sHttpVersion = null;
-                            if (iStartPos >= 0)
-                                sHttpVersion = sBuffer.Substring(iStartPos, 8);
-
-                            string requestType = sBuffer.Substring(0, 4).Trim();
-                            switch (requestType)
-                            {
-                                case "GET": handleGetRequest(sBuffer.Substring(0, iStartPos - 1), sHttpVersion, ref socketClient, bytes, sslStream); break;
-                                case "POST": ; break;
-                                default: SendErrorPage(400, sHttpVersion, ref socketClient, bytes, sslStream); return;
-                            }
-
-                        }
-
-                        // Check for EOF. 
-                        if (messageData.ToString().IndexOf("\r\n") != -1)
-                        {
-                            break;
+                            case "GET": handleGetRequest(sBuffer.Substring(0, iStartPos - 1), sHttpVersion, bytes, sslStream); break;
+                            case "POST": ; break;
+                            default: SendErrorPage(400, sHttpVersion, bytes, sslStream); return;
                         }
                     }
-                    while (bytes != 0);
+                    else
+                    {
+
+                    }
                 }
-                catch (AuthenticationException ex)
-                {
-                    Console.WriteLine(ex);
-                }
-                catch (IOException e)
-                {
-                    Console.WriteLine(e);
-                }
-                finally
-                {
-                    sslStream.Close();
-                    socketClient.Close();
-                }
+                while (bytes == 0 || bytes == 1);
+            }
+            catch (AuthenticationException ex)
+            {
+                Console.WriteLine(ex);
+            }
+            catch (IOException e)
+            {
+                Console.WriteLine(e);
+            }
+            finally
+            {
+                //socketClient.Close();
+                sslStream.Close();
             }
         }
+        
 
-        private void sendHeader(string sHttpVersion, string sMIMEHeader, int iTotBytes, string sStatusCode, ref Socket clientSocket, int bytes,SslStream sslStream)
+        private void sendHeader(string sHttpVersion, string sMIMEHeader, int iTotBytes, string sStatusCode, int bytes, SslStream sslStream)
         {
             String sBuffer = "";
 
@@ -162,32 +161,32 @@ namespace Webserver
 
             Byte[] bSendData = Encoding.ASCII.GetBytes(sBuffer);
 
-            sendToBrowser(bSendData, ref clientSocket, bytes, sslStream);
+            sendToBrowser(bSendData, bytes, sslStream);
         }
 
-        private void sendToBrowser(String sSendData, ref Socket clientSocket,int bytes,SslStream sslStream)
+        private void sendToBrowser(String sSendData, int bytes, SslStream sslStream)
         {
-            sendToBrowser(Encoding.ASCII.GetBytes(sSendData), ref clientSocket, bytes, sslStream);
+            sendToBrowser(Encoding.ASCII.GetBytes(sSendData), bytes, sslStream);
         }
 
-        private void sendToBrowser(Byte[] bSendData, ref Socket clientSocket, int bytes, SslStream sslStream)
+        private void sendToBrowser(Byte[] bSendData, int bytes, SslStream sslStream)
         {
             int numBytes = bytes;
 
             try
             {
-                if (clientSocket.Connected)
-                {
+                //if (clientSocket.Connected)
+                //{
                     sslStream.Write(bSendData);
-                    sslStream.Flush();
+                    //sslStream.Flush();
 
                     if(numBytes == -1)
                         Console.WriteLine("Socket Error cannot Send Packet");
                     else
                         Console.WriteLine("No. of bytes send {0}", numBytes);
-                }
-                else
-                    Console.WriteLine("Connection Dropped....");
+                //}
+                //else
+                    //Console.WriteLine("Connection Dropped....");
             }
             catch (Exception e)
             {
@@ -195,7 +194,7 @@ namespace Webserver
             }
         }
 
-        public void SendErrorPage(int code, string sHttpVersion, ref Socket clientSocket, int bytes, SslStream sslStream)
+        public void SendErrorPage(int code, string sHttpVersion, int bytes, SslStream sslStream)
         {
             string sErrorFolder = Path.Combine(Environment.CurrentDirectory, "Data\\Errors");
             string sErrorFile = "";
@@ -213,11 +212,11 @@ namespace Webserver
             // Get the byte array 
             Byte[] bMessage = Encoding.ASCII.GetBytes(sr.ReadToEnd());
 
-            sendHeader(sHttpVersion, "", bMessage.Length, sErrorCode, ref clientSocket, bytes, sslStream);
-            sendToBrowser(bMessage, ref clientSocket, bytes, sslStream);
+            sendHeader(sHttpVersion, "", bMessage.Length, sErrorCode, bytes, sslStream);
+            sendToBrowser(bMessage, bytes, sslStream);
         }
 
-        private void handleGetRequest(String sRequest, String sHttpVersion, ref Socket clientSocket, int bytes, SslStream sslStream)
+        private void handleGetRequest(String sRequest, String sHttpVersion, int bytes, SslStream sslStream)
         {
             int newByte = bytes;
             sRequest.Replace("\\", "/");
@@ -238,7 +237,7 @@ namespace Webserver
             String localPath = getLocalPath(sDirectoryName);
             if (String.IsNullOrEmpty(localPath))
             {
-                SendErrorPage(404, sHttpVersion, ref clientSocket, bytes,sslStream);
+                SendErrorPage(404, sHttpVersion, bytes,sslStream);
                 return;
             }
 
@@ -261,7 +260,7 @@ namespace Webserver
             int newBytes = bytes;
             if (String.IsNullOrEmpty(mimeType))
             {
-                SendErrorPage(404, sHttpVersion, ref clientSocket, newBytes,sslStream);
+                SendErrorPage(404, sHttpVersion, newBytes,sslStream);
                 return;
             }
 
@@ -277,7 +276,7 @@ namespace Webserver
             }
             else
             {
-                SendErrorPage(404, sHttpVersion, ref clientSocket,bytes,sslStream);
+                SendErrorPage(404, sHttpVersion, bytes, sslStream);
                 return;
             }
 
@@ -299,8 +298,8 @@ namespace Webserver
             //_logModule.writeInfo(ref clientSocket, sDirectoryName, sRequestedFile, webServerRoot);
 
             // Write data to the browser
-            sendHeader(sHttpVersion, mimeType, iTotalBytes, "200 OK", ref clientSocket,bytes,sslStream);
-            sendToBrowser(sResponse, ref clientSocket, bytes,sslStream);
+            sendHeader(sHttpVersion, mimeType, iTotalBytes, "200 OK",bytes,sslStream);
+            sendToBrowser(sResponse, bytes,sslStream);
         }
 
         #region File methods

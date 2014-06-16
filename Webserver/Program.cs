@@ -21,7 +21,7 @@ namespace Webserver
             IPublicSettingsModule settingsModule = new SettingsModule();
             
             //Create threads for each server
-            Thread controlServerThread = new Thread(() => new ControlServer2(settingsModule));
+            Thread controlServerThread = new Thread(() => new ControlServer(settingsModule));
             controlServerThread.Start();
             Thread webServerThread = new Thread(() => new Server(settingsModule));
             webServerThread.Start();
