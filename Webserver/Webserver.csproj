@@ -52,9 +52,11 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="AbstractServer.cs" />
     <Compile Include="ControlServer.cs" />
     <Compile Include="Interfaces\IPublicSettingsModule.cs" />
     <Compile Include="Interfaces\IServerSettingsModule.cs" />
+    <Compile Include="Modules\FileModule.cs" />
     <Compile Include="Modules\LogModule.cs" />
     <Compile Include="Modules\MySqlModule.cs" />
     <Compile Include="Modules\SettingsModule.cs" />

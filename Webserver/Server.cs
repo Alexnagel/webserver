@@ -14,7 +14,7 @@ using Webserver.Modules;
 
 namespace Webserver
 {
-    class Server
+    class Server : AbstractServer
     {
         private const int INIT_THREADS = 20;
         private const int MAX_THREADS = 20;
@@ -25,10 +25,11 @@ namespace Webserver
 
         private IPublicSettingsModule _publicSettingsModule;
         private IServerSettingsModule _serverSettingsModule;
-        private LogModule _logModule;
+        private FileModule            _fileModule;
+        private LogModule             _logModule;
 
         private TcpListener _tcpListener;
-        private Boolean _isRunning;
+        private Boolean     _isRunning;
 
         // Dictionary for all mimetypes
         private Dictionary<string, string> _allowedMimeTypes;
@@ -41,6 +42,9 @@ namespace Webserver
             _publicSettingsModule = settingsModule;
             _serverSettingsModule = new SettingsModule();
             _serverIP = IPAddress.Parse("127.0.0.1");
+
+            // Set the filemodule
+            _fileModule = new FileModule();
             
             // set logger
             _logModule = new LogModule(_serverIP.ToString());
@@ -79,11 +83,16 @@ namespace Webserver
         private void handleClient(object client)
         {
             Socket socketClient = (Socket)client;
+            // Use to write to the browser, needed for AbstractServer
+            // BufferedStream because it's 5x faster, don't ask me why
+            BufferedStream stream = new BufferedStream(new NetworkStream(socketClient));
+
             Stopwatch stopWatch = new Stopwatch();
             stopWatch.Start();
             if (socketClient.Connected)
             {
                 Byte[] receivedBytes = new Byte[1024];
+                Byte[] receivedBytes2 = new Byte[1024];
                 int i = socketClient.Receive(receivedBytes, receivedBytes.Length, 0);
 
                 string sBuffer = Encoding.ASCII.GetString(receivedBytes);
@@ -102,9 +111,9 @@ namespace Webserver
                     
                     switch (requestType)
                     {
-                        case "GET": handleGetRequest(sBuffer.Substring(0, iStartPos - 1), sHttpVersion, ref socketClient); break;
+                        case "GET": handleGetRequest(sBuffer.Substring(0, iStartPos - 1), sHttpVersion, stream); break;
                         case "POST": ; break;
-                        default: SendErrorPage(400, sHttpVersion, ref socketClient); return;
+                        default: SendErrorPage(400, sHttpVersion, stream); return;
                     }
                 }
                 stopWatch.Stop();
@@ -116,78 +125,7 @@ namespace Webserver
             _connectionSemaphore.Release();
         }
 
-        private void sendHeader(string sHttpVersion, string sMIMEHeader, int iTotBytes, string sStatusCode, ref Socket clientSocket)
-        {
-            String sBuffer = "";
-
-            // if Mime type is not provided set default to text/html
-            if (sMIMEHeader.Length == 0)
-            {
-                sMIMEHeader = "text/html";  // Default Mime Type is text/html
-            }
-
-            sBuffer = sBuffer + sHttpVersion + " " + sStatusCode + "\r\n";
-            sBuffer = sBuffer + "Server: C#Server\r\n";
-            sBuffer = sBuffer + "Content-Type: " + sMIMEHeader + "\r\n";
-            sBuffer = sBuffer + "Accept-Ranges: bytes\r\n";
-            sBuffer = sBuffer + "Content-Length: " + iTotBytes + "\r\n\r\n";
-
-            Byte[] bSendData = Encoding.ASCII.GetBytes(sBuffer);
-
-            sendToBrowser(bSendData, ref clientSocket);
-        }
-
-        private void sendToBrowser(String sSendData, ref Socket clientSocket)
-        {
-            sendToBrowser(Encoding.ASCII.GetBytes(sSendData), ref clientSocket);
-        }
-
-        private void sendToBrowser(Byte[] bSendData, ref Socket clientSocket)
-        {
-            int numBytes = 0;
-            try
-            {
-                if (clientSocket.Connected)
-                {
-                    if ((numBytes = clientSocket.Send(bSendData, bSendData.Length, 0)) == -1)
-                        Console.WriteLine("Socket Error cannot Send Packet");
-                    else
-                    {
-                        Console.WriteLine("No. of bytes send {0}", numBytes);
-                    }
-                }
-                else
-                    Console.WriteLine("Connection Dropped....");
-            }
-            catch (Exception e)
-            {
-                Console.WriteLine("Error Occurred : {0} ", e);
-            }
-        }
-
-        public void SendErrorPage(int code, string sHttpVersion, ref Socket clientSocket)
-        {
-            string sErrorFolder = Path.Combine(Environment.CurrentDirectory, "Data\\Errors");
-            string sErrorFile = "";
-            string sErrorCode = "";
-
-            switch(code)
-            {
-                case 404: sErrorFile = "404.html"; sErrorCode = "404 Not Found"; break;
-                case 400: sErrorFile = "400.html"; sErrorCode = "400 Bad Request"; break;
-            }
-
-            String sErrorFilePath = Path.Combine(sErrorFolder, sErrorFile);
-            StreamReader sr = new StreamReader(sErrorFilePath);
-
-            // Get the byte array 
-            Byte[] bMessage = Encoding.ASCII.GetBytes(sr.ReadToEnd());
-            
-            sendHeader(sHttpVersion, "", bMessage.Length, sErrorCode, ref clientSocket);
-            sendToBrowser(bMessage, ref clientSocket);
-        }
-
-        private void handleGetRequest(String sRequest, String sHttpVersion, ref Socket clientSocket)
+        private void handleGetRequest(String sRequest, String sHttpVersion, Stream clientSocket)
         {
             sRequest.Replace("\\", "/");
 
@@ -201,111 +139,38 @@ namespace Webserver
             Console.WriteLine(sRequestedFile);
 
             // Check if localpath exists
-            String localPath = getLocalPath(sDirectoryName);
-            if (String.IsNullOrEmpty(localPath))
+            String sLocalPath = _fileModule.GetLocalPath(sDirectoryName);
+            if (String.IsNullOrEmpty(sLocalPath))
             {
-                SendErrorPage(404, sHttpVersion, ref clientSocket);
+                SendErrorPage(404, sHttpVersion, clientSocket);
                 return;
             }
 
             // Check if file is given, get default file if not given
             if (string.IsNullOrEmpty(sRequestedFile))
             {
-                List<String> defaultPages = _publicSettingsModule.getDefaultPage();
-                foreach (String defaultPage in defaultPages)
-                {
-                    if (File.Exists(Path.Combine(localPath, defaultPage)))
-                    {
-                        sRequestedFile = defaultPage;
-                        break;
-                    }
-                }
+                sRequestedFile = _fileModule.GetDefaultPage(sLocalPath);
             }
 
             // Check file mimetype
-            String mimeType = getMimeType(sRequestedFile);
+            String mimeType = _fileModule.GetMimeType(sRequestedFile);
             if (String.IsNullOrEmpty(mimeType))
             {
-                SendErrorPage(404, sHttpVersion, ref clientSocket);
+                SendErrorPage(404, sHttpVersion, clientSocket);
                 return;
             }
 
             // File to bytes
-            int iTotalBytes = 0;
-            String sResponse = "";
-            String sPhysicalFilePath = Path.Combine(localPath, sRequestedFile);
-
-            FileStream fs = null;
-            if (File.Exists(sPhysicalFilePath))
-            {
-                fs = new FileStream(sPhysicalFilePath, FileMode.Open, FileAccess.Read, FileShare.Read);
-            }
-            else
-            {
-                SendErrorPage(404, sHttpVersion, ref clientSocket);
-                return;
-            }
-
-            // Create byteReader
-            BinaryReader reader = new BinaryReader(fs);
-            byte[] bytes = new byte[fs.Length];
-            int read;
-            while((read = reader.Read(bytes,0, bytes.Length)) != 0)
-            {
-                sResponse += Encoding.ASCII.GetString(bytes, 0, read);
-                iTotalBytes += read;
-            }
-
-            reader.Close();
-            fs.Close();
+            String sPhysicalFilePath = Path.Combine(sLocalPath, sRequestedFile);
+            byte[] bFileBytes = _fileModule.FileToBytes(sPhysicalFilePath);
 
             // save get info
             String webServerRoot = _publicSettingsModule.getWebroot();
-            _logModule.writeInfo(ref clientSocket, sDirectoryName, sRequestedFile, webServerRoot);
+            //_logModule.writeInfo(clientSocket, sDirectoryName, sRequestedFile, webServerRoot);
 
             // Write data to the browser
-            sendHeader(sHttpVersion, mimeType, iTotalBytes, "200 OK", ref clientSocket);
-            sendToBrowser(sResponse, ref clientSocket);
+            SendHeader(sHttpVersion, mimeType, bFileBytes.Length, "200 OK", clientSocket);
+            SendToBrowser(bFileBytes, clientSocket);
         }
-
-#region File methods
-        
-        private String getLocalPath(String sRequestedDirectory)
-        {
-            String webServerRoot = _publicSettingsModule.getWebroot();
-
-            // Remove spaces and lower case
-            sRequestedDirectory.Trim();
-            sRequestedDirectory = sRequestedDirectory.ToLower();
-
-            String localPath = webServerRoot;
-            if(!sRequestedDirectory.Equals("/"))
-                localPath = Path.Combine(webServerRoot,sRequestedDirectory);
-
-            if (!Directory.Exists(localPath))
-                return "";
-            else
-                return localPath;
-        }
-
-        private String getMimeType(String sRequestFile)
-        {
-            // Remove spaces and lower case
-            sRequestFile.Trim();
-            sRequestFile = sRequestFile.ToLower();
-
-            String fileExtension = Path.GetExtension(sRequestFile);
-            fileExtension = fileExtension.Replace(".", "");
-            Boolean mimeTypeAllowed = _allowedMimeTypes.ContainsKey(fileExtension);
-            
-            // Check if mimetype exists
-            if (!mimeTypeAllowed)
-                return "";
-            else
-                return _allowedMimeTypes.Where(pair => pair.Key.Equals(fileExtension)).First().Value;
-        }
-
-#endregion
-
     }
 }
