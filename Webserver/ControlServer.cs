@@ -37,10 +37,13 @@ namespace Webserver
 
         private int bytes = -1;
 
+        private MySqlModule mySqlModule;
+
         public ControlServer(IPublicSettingsModule settingsModule)
         {
             // Connect DB
-            new MySqlModule();
+            mySqlModule = new MySqlModule();
+
             // set the settingsmodules
             _publicSettingsModule = settingsModule;
             _serverSettingsModule = new SettingsModule();
@@ -99,121 +102,15 @@ namespace Webserver
                     sHttpVersion = sBuffer.Substring(iStartPos, 8);
 
                 string requestType = sBuffer.Substring(0, 4).Trim();
+                Console.WriteLine(sBuffer);
                 switch (requestType)
                 {
                     case "GET": handleGetRequest(sBuffer.Substring(0, iStartPos - 1), sHttpVersion, bytes, sslStream); break;
-                    case "POST": ; break;
+                    case "POST": handlePostRequest(sBuffer.Substring(0, iStartPos - 1), sHttpVersion, bytes, sslStream); break;
                     default: SendErrorPage(400, sHttpVersion, bytes, sslStream); return;
                 }
             }
             sslStream.Close();
-            /*byte[] resultBuffer = new byte[2048];
-            string sBuffer = "";
-            bytes = -1;
-            //requestStream.BeginRead(resultBuffer, 0, resultBuffer.Length, new AsyncCallback(ReadAsyncCallback), new result() { buffer = resultBuffer, stream = requestStream, handler = callback, asyncResult = null });
-            do
-            {
-                try
-                {
-                    bytes = sslStream.Read(resultBuffer, 0, resultBuffer.Length);
-                    sBuffer += UTF8Encoding.UTF8.GetString(resultBuffer, 0, bytes);
-
-                    if (bytes != 1)
-                        break;
-                }
-                catch { break; }
-            } while (true);
-
-
-            if (sBuffer.Length > 3)
-            {
-                // Look for HTTP request
-                int iStartPos = sBuffer.IndexOf("HTTP", 1);
-                string sHttpVersion = null;
-                if (iStartPos >= 0)
-                    sHttpVersion = sBuffer.Substring(iStartPos, 8);
-
-                string requestType = sBuffer.Substring(0, 4).Trim();
-                switch (requestType)
-                {
-                    case "GET": handleGetRequest(sBuffer.Substring(0, iStartPos - 1), sHttpVersion, bytes, sslStream); break;
-                    case "POST": ; break;
-                    default: SendErrorPage(400, sHttpVersion, bytes, sslStream); return;
-                }
-            }
-            //byte[] buffer = new byte[2048];
-            //StringBuilder messageData = new StringBuilder();
-            //bytes = 0;
-            
-            /*try
-            {
-                sslStream.AuthenticateAsServer(certificate);
-                do
-                {
-                    //StreamReader sr = new StreamReader(sslStream);
-                    
-                    bytes = sslStream.Read(buffer, 0, buffer.Length);
-                    Decoder decoder = Encoding.UTF8.GetDecoder();
-                    char[] chars = new char[decoder.GetCharCount(buffer, 0, bytes)];
-
-                    decoder.GetChars(buffer, 0, bytes, chars, 0);
-                    messageData.Append(chars);
-                    Console.WriteLine(messageData.ToString());
-
-                    String sBuffer = messageData.ToString();
-                    sBuffer = sBuffer.Trim('\0');
-
-                    if (sBuffer.Length > 3)
-                    {
-                        // Look for HTTP request
-                        int iStartPos = sBuffer.IndexOf("HTTP", 1);
-                        string sHttpVersion = null;
-                        if (iStartPos >= 0)
-                            sHttpVersion = sBuffer.Substring(iStartPos, 8);
-
-                        string requestType = sBuffer.Substring(0, 4).Trim();
-                        switch (requestType)
-                        {
-                            case "GET": handleGetRequest(sBuffer.Substring(0, iStartPos - 1), sHttpVersion, bytes, sslStream); break;
-                            case "POST": ; break;
-                            default: SendErrorPage(400, sHttpVersion, bytes, sslStream); return;
-                        }
-                    }
-                    else
-                    {
-
-                    }
-                }
-                while (bytes == 0 || bytes == 1);
-            }
-            catch (AuthenticationException ex)
-            {
-                Console.WriteLine(ex);
-            }
-            catch (IOException e)
-            {
-                Console.WriteLine(e);
-            }
-            finally
-            {
-                //socketClient.Close();
-                sslStream.Close();
-            }*/
-        }
-
-        private static bool ValidateRemoteCertificate(object sender, X509Certificate cert, X509Chain chain, SslPolicyErrors error)
-        {
-            // If the certificate is a valid, signed certificate, return true.
-            if (error == System.Net.Security.SslPolicyErrors.None)
-            {
-                return true;
-            }
-
-            Console.WriteLine("X509Certificate [{0}] Policy Error: '{1}'",
-                cert.Subject,
-                error.ToString());
-
-            return false;
         }
 
         private List<string> readStream(Stream stream)
@@ -397,6 +294,92 @@ namespace Webserver
             // Write data to the browser
             sendHeader(sHttpVersion, mimeType, iTotalBytes, "200 OK",bytes,sslStream);
             sendToBrowser(sResponse, bytes,sslStream);
+        }
+
+        private void handlePostRequest(String sRequest, String sHttpVersion, int bytes, SslStream sslStream)
+        {
+            int newByte = bytes;
+            sRequest.Replace("\\", "/");
+
+            if ((sRequest.IndexOf(".") < 1) && (!sRequest.EndsWith("/")))
+                sRequest += "/";
+
+            String sRequestDirectoryName = sRequest.Substring(sRequest.IndexOf("/"), sRequest.LastIndexOf("/") - 4);
+            sRequestDirectoryName = (sRequestDirectoryName.Equals("/")) ? "" : sRequestDirectoryName;
+
+            String sDirectoryName = Path.Combine("control", sRequestDirectoryName);
+            String sRequestedFile = sRequest.Substring(sRequest.LastIndexOf("/") + 1);
+
+            Console.WriteLine(sDirectoryName);
+            Console.WriteLine(sRequestedFile);
+
+            // Check if localpath exists
+            String localPath = getLocalPath(sDirectoryName);
+            if (String.IsNullOrEmpty(localPath))
+            {
+                SendErrorPage(404, sHttpVersion, bytes, sslStream);
+                return;
+            }
+
+            // Check if file is given, get default file if not given
+            if (string.IsNullOrEmpty(sRequestedFile))
+            {
+                List<String> defaultPages = _publicSettingsModule.getControlDefaultPage();
+                foreach (String defaultPage in defaultPages)
+                {
+                    if (File.Exists(Path.Combine(localPath, defaultPage)))
+                    {
+                        sRequestedFile = defaultPage;
+                        break;
+                    }
+                }
+            }
+
+            // Check file mimetype
+            String mimeType = getMimeType(sRequestedFile);
+            int newBytes = bytes;
+            if (String.IsNullOrEmpty(mimeType))
+            {
+                SendErrorPage(404, sHttpVersion, newBytes, sslStream);
+                return;
+            }
+
+            // File to bytes
+            int iTotalBytes = 0;
+            String sResponse = "";
+            String sPhysicalFilePath = Path.Combine(localPath, sRequestedFile);
+
+            FileStream fs = null;
+            if (File.Exists(sPhysicalFilePath))
+            {
+                fs = new FileStream(sPhysicalFilePath, FileMode.Open, FileAccess.Read, FileShare.Read);
+            }
+            else
+            {
+                SendErrorPage(404, sHttpVersion, bytes, sslStream);
+                return;
+            }
+
+            // Create byteReader
+            BinaryReader reader = new BinaryReader(fs);
+            byte[] bBytes = new byte[fs.Length];
+            int read;
+            while ((read = reader.Read(bBytes, 0, bBytes.Length)) != 0)
+            {
+                sResponse += Encoding.ASCII.GetString(bBytes, 0, read);
+                iTotalBytes += read;
+            }
+
+            reader.Close();
+            fs.Close();
+
+            // save get info
+            String webServerRoot = _publicSettingsModule.getWebroot();
+            //_logModule.writeInfo(ref clientSocket, sDirectoryName, sRequestedFile, webServerRoot);
+
+            // Write data to the browser
+            sendHeader(sHttpVersion, mimeType, iTotalBytes, "200 OK", bytes, sslStream);
+            sendToBrowser(sResponse, bytes, sslStream);
         }
 
         #region File methods

@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Net;
@@ -78,7 +79,8 @@ namespace Webserver
         private void handleClient(object client)
         {
             Socket socketClient = (Socket)client;
-
+            Stopwatch stopWatch = new Stopwatch();
+            stopWatch.Start();
             if (socketClient.Connected)
             {
                 Byte[] receivedBytes = new Byte[1024];
@@ -96,6 +98,8 @@ namespace Webserver
                         sHttpVersion = sBuffer.Substring(iStartPos, 8);
 
                     string requestType = sBuffer.Substring(0, 4).Trim();
+                    
+                    
                     switch (requestType)
                     {
                         case "GET": handleGetRequest(sBuffer.Substring(0, iStartPos - 1), sHttpVersion, ref socketClient); break;
@@ -103,6 +107,11 @@ namespace Webserver
                         default: SendErrorPage(400, sHttpVersion, ref socketClient); return;
                     }
                 }
+                stopWatch.Stop();
+                TimeSpan ts = stopWatch.Elapsed;
+                string newDate = DateTime.Now.ToString("yyyy-MM-dd HH':'mm':'ss");
+                string elapsedTime = ts.Milliseconds.ToString();
+                Console.WriteLine("LOG - IP : " + _serverIP + ", Date : " + newDate + ", responsetime : " + elapsedTime + ", URL : ");
             }
             _connectionSemaphore.Release();
         }
