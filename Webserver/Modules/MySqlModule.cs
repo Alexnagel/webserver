@@ -32,7 +32,7 @@ namespace Webserver.Modules
             database + ";" + "UID=" + uid + ";" + "PASSWORD=" + password + ";";
 
             connection = new MySqlConnection(connectionString);
-            OpenConnection();
+            Insert();
         }
 
         private bool OpenConnection()
@@ -55,6 +55,39 @@ namespace Webserver.Modules
                         break;
                 }
                 return false;
+            }
+        }
+
+        //Close connection
+        private bool CloseConnection()
+        {
+            try
+            {
+                connection.Close();
+                return true;
+            }
+            catch (MySqlException ex)
+            {
+                MessageBox.Show(ex.Message);
+                return false;
+            }
+        }
+
+        public void Insert()
+        {
+            string query = @"INSERT INTO user (id, firstname, lastname) VALUES('1,','Stefan', 'van der Pas')";
+
+            //open connection
+            if (this.OpenConnection() == true)
+            {
+                //create command and assign the query and connection from the constructor
+                MySqlCommand cmd = new MySqlCommand(query, connection);
+
+                //Execute command
+                cmd.ExecuteNonQuery();
+
+                //close connection
+                this.CloseConnection();
             }
         }
     }
