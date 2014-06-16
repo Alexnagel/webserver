@@ -64,6 +64,7 @@ namespace Webserver
             _tcpListener.Start();
             Console.WriteLine("Controlserver listening on: " + _serverIP + ":" + _listenPort);
 
+            
             while(_isRunning)
             {
                 //Socket client = _tcpListener.AcceptSocket();
@@ -80,19 +81,77 @@ namespace Webserver
             TcpClient tcpclient = (TcpClient)client;
 
             SslStream sslStream = new SslStream(tcpclient.GetStream(), false);
-            sslStream.ReadTimeout = 100;
+            //sslStream.ReadTimeout = 1;
             sslStream.WriteTimeout = 100;
             ServicePointManager.SecurityProtocol = SecurityProtocolType.Ssl3;
 
-            byte[] buffer = new byte[2048];
-            StringBuilder messageData = new StringBuilder();
-            bytes = 0;
+            sslStream.AuthenticateAsServer(certificate);
+            List<string> sRequest = readStream(sslStream);
+            string sBuffer = sRequest[0];
+            bytes = int.Parse(sRequest[1]);
 
-            try
+            if (sBuffer.Length > 3)
+            {
+                // Look for HTTP request
+                int iStartPos = sBuffer.IndexOf("HTTP", 1);
+                string sHttpVersion = null;
+                if (iStartPos >= 0)
+                    sHttpVersion = sBuffer.Substring(iStartPos, 8);
+
+                string requestType = sBuffer.Substring(0, 4).Trim();
+                switch (requestType)
+                {
+                    case "GET": handleGetRequest(sBuffer.Substring(0, iStartPos - 1), sHttpVersion, bytes, sslStream); break;
+                    case "POST": ; break;
+                    default: SendErrorPage(400, sHttpVersion, bytes, sslStream); return;
+                }
+            }
+            sslStream.Close();
+            /*byte[] resultBuffer = new byte[2048];
+            string sBuffer = "";
+            bytes = -1;
+            //requestStream.BeginRead(resultBuffer, 0, resultBuffer.Length, new AsyncCallback(ReadAsyncCallback), new result() { buffer = resultBuffer, stream = requestStream, handler = callback, asyncResult = null });
+            do
+            {
+                try
+                {
+                    bytes = sslStream.Read(resultBuffer, 0, resultBuffer.Length);
+                    sBuffer += UTF8Encoding.UTF8.GetString(resultBuffer, 0, bytes);
+
+                    if (bytes != 1)
+                        break;
+                }
+                catch { break; }
+            } while (true);
+
+
+            if (sBuffer.Length > 3)
+            {
+                // Look for HTTP request
+                int iStartPos = sBuffer.IndexOf("HTTP", 1);
+                string sHttpVersion = null;
+                if (iStartPos >= 0)
+                    sHttpVersion = sBuffer.Substring(iStartPos, 8);
+
+                string requestType = sBuffer.Substring(0, 4).Trim();
+                switch (requestType)
+                {
+                    case "GET": handleGetRequest(sBuffer.Substring(0, iStartPos - 1), sHttpVersion, bytes, sslStream); break;
+                    case "POST": ; break;
+                    default: SendErrorPage(400, sHttpVersion, bytes, sslStream); return;
+                }
+            }
+            //byte[] buffer = new byte[2048];
+            //StringBuilder messageData = new StringBuilder();
+            //bytes = 0;
+            
+            /*try
             {
                 sslStream.AuthenticateAsServer(certificate);
                 do
                 {
+                    //StreamReader sr = new StreamReader(sslStream);
+                    
                     bytes = sslStream.Read(buffer, 0, buffer.Length);
                     Decoder decoder = Encoding.UTF8.GetDecoder();
                     char[] chars = new char[decoder.GetCharCount(buffer, 0, bytes)];
@@ -139,9 +198,47 @@ namespace Webserver
             {
                 //socketClient.Close();
                 sslStream.Close();
-            }
+            }*/
         }
-        
+
+        private static bool ValidateRemoteCertificate(object sender, X509Certificate cert, X509Chain chain, SslPolicyErrors error)
+        {
+            // If the certificate is a valid, signed certificate, return true.
+            if (error == System.Net.Security.SslPolicyErrors.None)
+            {
+                return true;
+            }
+
+            Console.WriteLine("X509Certificate [{0}] Policy Error: '{1}'",
+                cert.Subject,
+                error.ToString());
+
+            return false;
+        }
+
+        private List<string> readStream(Stream stream)
+        {
+            List<String> requestAndBytes = new List<String>();
+            byte[] resultBuffer = new byte[2048];
+            string value = "";
+            int read = -1;
+            //requestStream.BeginRead(resultBuffer, 0, resultBuffer.Length, new AsyncCallback(ReadAsyncCallback), new result() { buffer = resultBuffer, stream = requestStream, handler = callback, asyncResult = null });
+            do
+            {
+                try
+                {
+                    read = stream.Read(resultBuffer, 0, resultBuffer.Length);
+                    value += UTF8Encoding.UTF8.GetString(resultBuffer, 0, read);
+
+                    if (read != 1 )
+                        break;
+                }
+                catch { break; }
+            } while (true);
+            requestAndBytes.Add(value);
+            requestAndBytes.Add(read.ToString());
+            return requestAndBytes;
+        }
 
         private void sendHeader(string sHttpVersion, string sMIMEHeader, int iTotBytes, string sStatusCode, int bytes, SslStream sslStream)
         {
