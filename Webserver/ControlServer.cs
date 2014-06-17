@@ -38,12 +38,12 @@ namespace Webserver
 
         private X509Certificate certificate;
 
-        private MySqlModule mySqlModule;
+        private MySqlModule _mySqlModule;
 
         public ControlServer(IPublicSettingsModule settingsModule)
         {
             // Connect DB
-            mySqlModule = new MySqlModule();
+            _mySqlModule = new MySqlModule();
 
             // set the settingsmodules
             _publicSettingsModule = settingsModule;
@@ -236,7 +236,19 @@ namespace Webserver
 
         private void loginMethod(Dictionary<String, String> dPostData, String sHttpVersion, SslStream sslStream)
         {
+            String username = dPostData.ElementAt(0).Value;
+            String password = dPostData.ElementAt(1).Value;
 
+            Dictionary<bool, string> loginResult = _mySqlModule.CheckUser(username, password);
+            if(loginResult.ElementAt(0).Key == true)
+            {
+                //SendHeader(sHttpVersion,)
+                //SendToBrowser
+            }
+            else
+            {
+                SendErrorPage(400, sHttpVersion, sslStream);
+            }
         }
     }
 }

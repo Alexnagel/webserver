@@ -5,6 +5,7 @@ using System.Text;
 using System.Threading.Tasks;
 using MySql.Data.MySqlClient;
 using System.Windows.Forms;
+using System.Data.SqlClient;
 
 namespace Webserver.Modules
 {
@@ -89,6 +90,35 @@ namespace Webserver.Modules
                 //close connection
                 this.CloseConnection();
             }
+        }
+
+        public Dictionary<bool,string> CheckUser(String username, String password)
+        {
+            Dictionary<bool, string> loginCred = new Dictionary<bool, string>();
+            string query = "SELECT rights FROM user WHERE username=@User AND password=@Pass;";
+            if(this.OpenConnection() == true)
+            {
+                MySqlCommand cmd = new MySqlCommand(query, connection);
+                cmd.Parameters.AddWithValue("@User", username);
+                cmd.Parameters.AddWithValue("@Pass", password);
+                MySqlDataReader dr = cmd.ExecuteReader();
+                String result = "";
+                while (dr.Read())
+                {
+                    result = dr[0].ToString();
+                }
+
+                if(!string.IsNullOrEmpty(result))
+                {
+                    loginCred.Add(true, result);
+                }
+                else
+                {
+                    loginCred.Add(false, result);
+                }
+            }
+
+            return loginCred;
         }
     }
 }
