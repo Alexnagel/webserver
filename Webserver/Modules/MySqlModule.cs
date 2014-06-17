@@ -32,7 +32,7 @@ namespace Webserver.Modules
             database + ";" + "UID=" + uid + ";" + "PASSWORD=" + password + ";";
 
             connection = new MySqlConnection(connectionString);
-            Insert();
+            //Insert();
         }
 
         private bool OpenConnection()

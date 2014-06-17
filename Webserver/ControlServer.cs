@@ -38,8 +38,6 @@ namespace Webserver
 
         private X509Certificate certificate;
 
-        private int bytes = -1;
-
         private MySqlModule mySqlModule;
 
         public ControlServer(IPublicSettingsModule settingsModule)
