@@ -234,9 +234,18 @@ namespace Webserver
             switch(sPostMethod)
             {
                 case "login": loginMethod(sPostMethod, dPostData, sRequestedFile, sRequest, sHttpVersion, sslStream); break;
-                case "new": loginMethod(sPostMethod, dPostData, sRequestedFile, sRequest, sHttpVersion, sslStream); break;
+                case "createuser": loginMethod(sPostMethod, dPostData, sRequestedFile, sRequest, sHttpVersion, sslStream); break;
+                case "new": createMethod(sPostMethod, dPostData, sRequestedFile, sRequest, sHttpVersion, sslStream); break;
                 default: SendErrorPage(404, sHttpVersion, sslStream); break;
             }
+        }
+
+        private void createMethod(String sPostMethod, Dictionary<String,String> dPostData, String sRequestedFile, String sRequest, String sHttpVersion, SslStream sslStream)
+        {
+            String username = dPostData.ElementAt(0).Value;
+            String password = dPostData.ElementAt(1).Value;
+            String right = dPostData.ElementAt(2).Value;
+            _mySqlModule.CreateUser(username, password, right);
         }
 
         private void loginMethod(String sPostMethod, Dictionary<String, String> dPostData, String sRequestedFile, String sRequest, String sHttpVersion, SslStream sslStream)

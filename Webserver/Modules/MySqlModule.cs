@@ -74,24 +74,6 @@ namespace Webserver.Modules
             }
         }
 
-        public void Insert()
-        {
-            string query = @"INSERT INTO user (id, firstname, lastname) VALUES('1,','Stefan', 'van der Pas')";
-
-            //open connection
-            if (this.OpenConnection() == true)
-            {
-                //create command and assign the query and connection from the constructor
-                MySqlCommand cmd = new MySqlCommand(query, connection);
-
-                //Execute command
-                cmd.ExecuteNonQuery();
-
-                //close connection
-                this.CloseConnection();
-            }
-        }
-
         public Dictionary<bool,string> CheckUser(String username, String password)
         {
             Dictionary<bool, string> loginCred = new Dictionary<bool, string>();
@@ -120,6 +102,30 @@ namespace Webserver.Modules
             }
 
             return loginCred;
+        }
+
+        public void CreateUser(String username, String password, String rights)
+        {
+            string query = @"INSERT INTO user (id, username, password, rights) VALUES(@Id, @Username, @Password, @Rights)";
+
+            //open connection
+            if (this.OpenConnection() == true)
+            {
+                //create command and assign the query and connection from the constructor
+                MySqlCommand cmd = new MySqlCommand(query, connection);
+
+                // Add parameters to prevent sql injection
+                cmd.Parameters.Add("Id", 2);
+                cmd.Parameters.Add("Username", username);
+                cmd.Parameters.Add("Password", password);
+                cmd.Parameters.Add("Rights", rights);
+
+                //Execute command
+                cmd.ExecuteNonQuery();
+
+                //close connection
+                this.CloseConnection();
+            }
         }
     }
 }
