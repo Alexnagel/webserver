@@ -204,6 +204,39 @@ namespace Webserver
                 String[] saSeperateData = saPostData[i].Split('=');
                 dPostData.Add(saSeperateData[0], saSeperateData[1]);
             }
+            
+            // Get post method
+            String sPostMethod = "";
+            int iPostStartPos = sRequest.IndexOf("HTTP", 1);
+            sRequest = sRequest.Substring(0, iPostStartPos - 1);
+
+            // Replace the escaped slashes
+            sRequest.Replace("\\", "/");
+
+            if ((sRequest.IndexOf(".") < 1) && (!sRequest.EndsWith("/")))
+                sRequest += "/";
+
+            String sRequestedFile = sRequest.Substring(sRequest.LastIndexOf("/") + 1);
+            if (String.IsNullOrWhiteSpace(sRequestedFile))
+            {
+                sPostMethod = "login";
+            }
+
+            handlePostMethod(sPostMethod, dPostData, sHttpVersion, sslStream);
+        }
+
+        private void handlePostMethod(String sPostMethod, Dictionary<String, String> dPostData, String sHttpVersion, SslStream sslStream)
+        {
+            switch(sPostMethod)
+            {
+                case "login": loginMethod(dPostData, sHttpVersion, sslStream); break;
+                default: SendErrorPage(404, sHttpVersion, sslStream); break;
+            }
+        }
+
+        private void loginMethod(Dictionary<String, String> dPostData, String sHttpVersion, SslStream sslStream)
+        {
+
         }
     }
 }
