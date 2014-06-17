@@ -221,6 +221,10 @@ namespace Webserver
             {
                 sPostMethod = "login";
             }
+            else
+            {
+                sPostMethod = Path.GetFileNameWithoutExtension(sRequestedFile);
+            }
 
             handlePostMethod(sPostMethod, dPostData, sHttpVersion, sslStream);
         }
