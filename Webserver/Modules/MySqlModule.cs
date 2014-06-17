@@ -116,6 +116,7 @@ namespace Webserver.Modules
                 {
                     loginCred.Add(false, result);
                 }
+                this.CloseConnection();
             }
 
             return loginCred;

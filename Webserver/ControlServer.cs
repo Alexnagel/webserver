@@ -226,19 +226,20 @@ namespace Webserver
                 sPostMethod = Path.GetFileNameWithoutExtension(sRequestedFile);
             }
 
-            handlePostMethod(sPostMethod, dPostData, sHttpVersion, sslStream);
+            handlePostMethod(sPostMethod, dPostData, sRequestedFile, sRequest, sHttpVersion, sslStream);
         }
 
-        private void handlePostMethod(String sPostMethod, Dictionary<String, String> dPostData, String sHttpVersion, SslStream sslStream)
+        private void handlePostMethod(String sPostMethod, Dictionary<String, String> dPostData, String sRequestedFile, String sRequest, String sHttpVersion, SslStream sslStream)
         {
             switch(sPostMethod)
             {
-                case "login": loginMethod(dPostData, sHttpVersion, sslStream); break;
+                case "login": loginMethod(sPostMethod, dPostData, sRequestedFile, sRequest, sHttpVersion, sslStream); break;
+                case "new": loginMethod(sPostMethod, dPostData, sRequestedFile, sRequest, sHttpVersion, sslStream); break;
                 default: SendErrorPage(404, sHttpVersion, sslStream); break;
             }
         }
 
-        private void loginMethod(Dictionary<String, String> dPostData, String sHttpVersion, SslStream sslStream)
+        private void loginMethod(String sPostMethod, Dictionary<String, String> dPostData, String sRequestedFile, String sRequest, String sHttpVersion, SslStream sslStream)
         {
             String username = dPostData.ElementAt(0).Value;
             String password = dPostData.ElementAt(1).Value;
@@ -246,8 +247,44 @@ namespace Webserver
             Dictionary<bool, string> loginResult = _mySqlModule.CheckUser(username, password);
             if(loginResult.ElementAt(0).Key == true)
             {
-                //SendHeader(sHttpVersion,)
-                //SendToBrowser
+                // send everything to browsers if login is true
+                // Get the directory
+                String sRequestDirectoryName = sRequest.Substring(sRequest.IndexOf("/"), sRequest.LastIndexOf("/") - 4);
+                // If directory is root then give empty string
+                sRequestDirectoryName = (sRequestDirectoryName.Equals("/")) ? "" : sRequestDirectoryName;
+
+                // Add 'control' to directory name, as it's the control server
+                String sDirectoryName = _fileModule.CombinePaths("control", sRequestDirectoryName);
+
+                // Check if localPath exists
+                String sLocalPath = _fileModule.GetLocalPath(sDirectoryName);
+                if (String.IsNullOrEmpty(sLocalPath))
+                {
+                    SendErrorPage(404, sHttpVersion, sslStream);
+                    return;
+                }
+
+                // Check if file is given, get default file if not given
+                //String sRequestedFile = sRequest.Substring(sRequest.LastIndexOf("/") + 1);
+                if (string.IsNullOrEmpty(sRequestedFile))
+                {
+                    sRequestedFile = _fileModule.GetControlDefaultPage(sLocalPath);
+                }
+
+                // Check file mimetype
+                String mimeType = _fileModule.GetMimeType(sRequestedFile);
+                if (String.IsNullOrEmpty(mimeType))
+                {
+                    SendErrorPage(404, sHttpVersion, sslStream);
+                    return;
+                }
+
+                // File to bytes
+                String sPhysicalFilePath = Path.Combine(sLocalPath, sRequestedFile);
+                byte[] bFileBytes = _fileModule.FileToBytes(sPhysicalFilePath);
+
+                SendHeader(sHttpVersion, mimeType, bFileBytes.Length, "200 OK", sslStream);
+                SendToBrowser(bFileBytes, sslStream);
             }
             else
             {
