@@ -203,7 +203,7 @@ namespace Webserver
             if (!sRequestedFile.Equals("login.html") && mimeType.Equals("text/html"))
             {
                 if ((user = _sessionModule.CheckIPSession(sClientIP)) == null)
-                    handleGetRequest("/", sHttpVersion, sClientIP, sslStream);
+                    handleGetRequest("GET /", sHttpVersion, sClientIP, sslStream);
                 else if (sRequestedFile.Equals("admin.html") && user.UserRight != UserRights.ADMIN)
                     SendErrorPage(404, sHttpVersion, sslStream);
             } 
