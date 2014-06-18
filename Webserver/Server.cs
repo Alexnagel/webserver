@@ -196,7 +196,7 @@ namespace Webserver
             using (StreamReader sr = new StreamReader(sDirLinkPath))
                 sDirLinkTemplate = sr.ReadToEnd();
 
-            Dictionary<String, String> dDirFiles = _fileModule.GetAllFilesFromDirectory(sDirectoryPath);
+            Dictionary<String, String> dDirFiles = _fileModule.GetAllFilesFromDirectory(sRelativeDir);
             foreach (KeyValuePair<String, String> item in dDirFiles)
                 sLinks += sDirLinkTemplate.Replace("{{link}}", item.Value).Replace("{{directory}}", item.Key) + "\n";
 
