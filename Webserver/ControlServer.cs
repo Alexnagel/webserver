@@ -67,7 +67,7 @@ namespace Webserver
 
             // set allowed mimetypes
             _allowedMimeTypes = _serverSettingsModule.getAllowedMIMETypes();
-            _listenPort = settingsModule.getControlPort();
+            _listenPort = settingsModule.GetControlPort();
 
             _isRunning = true;
             _tcpListener = new TcpListener(_serverIP, _listenPort);

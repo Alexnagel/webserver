@@ -8,24 +8,28 @@ namespace Webserver.Interfaces
 {
     interface IPublicSettingsModule
     {
-        void setWebPort(int portNumber);
+        void SetWebPort(int portNumber);
 
-        int getWebPort();
+        int GetWebPort();
 
-        void setControlPort(int portNumber);
+        void SetControlPort(int portNumber);
 
-        int getControlPort();
+        int GetControlPort();
 
-        void setWebroot(String rootDirectory);
+        Boolean GetAllowedDirectoryBrowsing();
 
-        String getWebroot();
+        void SetAllowedDirectoryBrowsing(Boolean dirBrowsing);
 
-        void setDefaultPage(List<String> defaultPages);
+        void SetWebroot(String rootDirectory);
 
-        List<String> getDefaultPage();
+        String GetWebroot();
 
-        List<String> getControlDefaultPage();
+        void SetDefaultPage(List<String> defaultPages);
 
-        Boolean saveSettings();
+        List<String> GetDefaultPage();
+
+        List<String> GetControlDefaultPage();
+
+        Boolean SaveSettings();
     }
 }

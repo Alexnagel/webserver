@@ -20,7 +20,7 @@ namespace Webserver.Modules
 
         public String GetDefaultPage(String localPath)
         {
-            List<String> defaultPages = _settingsModule.getDefaultPage();
+            List<String> defaultPages = _settingsModule.GetDefaultPage();
             foreach (String defaultPage in defaultPages)
             {
                 if (File.Exists(Path.Combine(localPath, defaultPage)))
@@ -33,7 +33,7 @@ namespace Webserver.Modules
 
         public String GetControlDefaultPage(String localPath)
         {
-            List<String> defaultPages = _settingsModule.getControlDefaultPage();
+            List<String> defaultPages = _settingsModule.GetControlDefaultPage();
             foreach (String defaultPage in defaultPages)
             {
                 if (File.Exists(Path.Combine(localPath, defaultPage)))
@@ -56,7 +56,7 @@ namespace Webserver.Modules
 
         public String GetLocalPath(String sRequestedDirectory)
         {
-            String webServerRoot = _settingsModule.getWebroot();
+            String webServerRoot = _settingsModule.GetWebroot();
 
             // Remove spaces and lower case
             sRequestedDirectory.Trim();
@@ -64,7 +64,7 @@ namespace Webserver.Modules
 
             String localPath = webServerRoot;
             if (!sRequestedDirectory.Equals("/"))
-                localPath = Path.Combine(webServerRoot, sRequestedDirectory);
+                localPath = CombinePaths(webServerRoot, sRequestedDirectory);
 
             if (!Directory.Exists(localPath))
                 return "";
@@ -132,6 +132,37 @@ namespace Webserver.Modules
             }
 
             return streamReader.ReadToEnd();
+        }
+
+        public Dictionary<String, String> GetAllFilesFromDirectory(String sDirectoryPath)
+        {
+            try
+            {
+                String[] saAbsolute = Directory.GetFileSystemEntries(GetLocalPath(sDirectoryPath), "*", SearchOption.TopDirectoryOnly);
+                Dictionary<String, String> dItems = new Dictionary<String, String>();
+                for (int i = 0; i < saAbsolute.Length; i++)
+                {
+                    String itemName = saAbsolute[i].Substring(saAbsolute[i].LastIndexOf('/') + 1);
+
+                    int iPos;
+                    String fileName;
+                    String location = "";
+                    if (!saAbsolute[i].EndsWith("/") && !((iPos = saAbsolute[i].LastIndexOf('/') + 1) < saAbsolute[i].Length && (fileName = saAbsolute[i].Substring(iPos)).Contains('.') && (fileName.LastIndexOf('.') >= 1 && fileName.LastIndexOf('.') < fileName.Length - 1)))
+                        location = sDirectoryPath + saAbsolute[i].Substring(saAbsolute[i].LastIndexOf('/') + 1) + "/";
+                    else
+                        location = sDirectoryPath + saAbsolute[i].Substring(saAbsolute[i].LastIndexOf('/') + 1);
+
+                    dItems.Add(itemName, location);
+                }
+
+                return dItems;
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine("Error occured when retrieving files from the directory.\n{0}", e.ToString());
+            }
+
+            return new Dictionary<string, string>();
         }
     }
 }

@@ -47,12 +47,12 @@ namespace Webserver.Modules
         }
 
         #region Public Settings
-        public void setWebPort(int portNumber)
+        public void SetWebPort(int portNumber)
         {
             xmlModule.setElement("WebPortNumber", portNumber.ToString());
         }
 
-        public int getWebPort()
+        public int GetWebPort()
         {
             String portNumber = xmlModule.getElement("WebPortNumber");
             if (portNumber == null)
@@ -61,12 +61,12 @@ namespace Webserver.Modules
                 return int.Parse(portNumber);
         }
 
-        public void setControlPort(int portNumber)
+        public void SetControlPort(int portNumber)
         {
             xmlModule.setElement("ControlPortNumber", portNumber.ToString());
         }
 
-        public int getControlPort()
+        public int GetControlPort()
         {
             String controlPortNumber = xmlModule.getElement("ControlPortNumber");
             if (controlPortNumber == null)
@@ -75,28 +75,38 @@ namespace Webserver.Modules
                 return int.Parse(controlPortNumber);
         }
 
-        public void setWebroot(string rootDirectory)
+        public void SetWebroot(string rootDirectory)
         {
             throw new NotImplementedException();
         }
 
-        public string getWebroot()
+        public string GetWebroot()
         {
             return xmlModule.getElement("WebrootDirectory");
         }
 
-        public void setDefaultPage(List<string> defaultPages)
+        public void SetDefaultPage(List<string> defaultPages)
         {
             throw new NotImplementedException();
         }
 
-        public List<string> getDefaultPage()
+        public List<string> GetDefaultPage()
         {
             String defaultPages = xmlModule.getElement("DefaultPage");
             return defaultPages.Split(';').ToList();
         }
 
-        public List<string> getControlDefaultPage()
+        public Boolean GetAllowedDirectoryBrowsing()
+        {
+            return Convert.ToBoolean(xmlModule.getElement("DirectoryTraversal"));
+        }
+
+        public void SetAllowedDirectoryBrowsing(Boolean dirBrowsing)
+        {
+            xmlModule.setElement("DirectoryTraversal", dirBrowsing.ToString());
+        }
+
+        public List<string> GetControlDefaultPage()
         {
             List<string> defaultPages = new List<string>();
             defaultPages.Add("login.html");
@@ -105,7 +115,7 @@ namespace Webserver.Modules
             return defaultPages;
         }
 
-        public bool saveSettings()
+        public bool SaveSettings()
         {
             throw new NotImplementedException();
         }

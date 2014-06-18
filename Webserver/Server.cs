@@ -18,6 +18,8 @@ namespace Webserver
     {
         private const int INIT_THREADS = 20;
         private const int MAX_THREADS = 20;
+        private const String DIRECTORY_BROWSING_TEMPLATE = "Data\\Templates\\Directorybrowsing.html";
+        private const String DIRECTORY_LINK_TEMPLATE = "Data\\Templates\\DirectoryLink.html";
 
         private static Semaphore _connectionSemaphore;
         private static IPAddress _serverIP;
@@ -53,7 +55,7 @@ namespace Webserver
             _allowedMimeTypes = _serverSettingsModule.getAllowedMIMETypes();
 
             // Get port for corresponding server
-            _listenPort = settingsModule.getWebPort();
+            _listenPort = settingsModule.GetWebPort();
 
             // Start the listener
             _isRunning = true;
@@ -152,6 +154,13 @@ namespace Webserver
                 sRequestedFile = _fileModule.GetDefaultPage(sLocalPath);
             }
 
+            if (String.IsNullOrWhiteSpace(sRequestedFile) && _publicSettingsModule.GetAllowedDirectoryBrowsing())
+            {
+                createDirectoryBrowsing(sLocalPath, sDirectoryName, sHttpVersion, clientSocket);
+            }
+            else
+                SendErrorPage(404, sHttpVersion, clientSocket);
+
             // Check file mimetype
             String mimeType = _fileModule.GetMimeType(sRequestedFile);
             if (String.IsNullOrEmpty(mimeType))
@@ -165,11 +174,36 @@ namespace Webserver
             byte[] bFileBytes = _fileModule.FileToBytes(sPhysicalFilePath);
 
             // save get info
-            String webServerRoot = _publicSettingsModule.getWebroot();
+            String webServerRoot = _publicSettingsModule.GetWebroot();
             //_logModule.writeInfo(clientSocket, sDirectoryName, sRequestedFile, webServerRoot);
 
             // Write data to the browser
             SendHeader(sHttpVersion, mimeType, bFileBytes.Length, "200 OK", clientSocket);
+            SendToBrowser(bFileBytes, clientSocket);
+        }
+
+        private void createDirectoryBrowsing(String sDirectoryPath, String sRelativeDir, String sHttpVersion, Stream clientSocket)
+        {
+            String sDirBrowsingPath = Path.Combine(Environment.CurrentDirectory, DIRECTORY_BROWSING_TEMPLATE);
+            String sDirLinkPath     = Path.Combine(Environment.CurrentDirectory, DIRECTORY_LINK_TEMPLATE);
+            String sDirBrowsingTemplate = "";
+            String sDirLinkTemplate = "";
+            String sLinks = "";
+
+            using(StreamReader sr = new StreamReader(sDirBrowsingPath))
+                 sDirBrowsingTemplate = sr.ReadToEnd();
+
+            using (StreamReader sr = new StreamReader(sDirLinkPath))
+                sDirLinkTemplate = sr.ReadToEnd();
+
+            Dictionary<String, String> dDirFiles = _fileModule.GetAllFilesFromDirectory(sDirectoryPath);
+            foreach (KeyValuePair<String, String> item in dDirFiles)
+                sLinks += sDirLinkTemplate.Replace("{{link}}", item.Value).Replace("{{directory}}", item.Key) + "\n";
+
+            sDirBrowsingTemplate = sDirBrowsingTemplate.Replace("{{folder}}", sRelativeDir).Replace("{{links}}", sLinks);
+
+            byte[] bFileBytes = Encoding.ASCII.GetBytes(sDirBrowsingTemplate);
+            SendHeader(sHttpVersion, "", bFileBytes.Length, "200 OK", clientSocket);
             SendToBrowser(bFileBytes, clientSocket);
         }
     }
