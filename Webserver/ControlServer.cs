@@ -22,6 +22,13 @@ namespace Webserver
         private const string CERTIFICATE_PATH = @"Data\webserverCA.pfx";
         private const string CERTIFICATE_PASSWORD = "webserver";
 
+        // set threads
+        private const int INIT_THREADS = 20;
+        private const int MAX_THREADS = 20;
+
+        // semaphores
+        private static Semaphore _connectionSemaphore;
+
         private static IPAddress _serverIP;
         private static int       _listenPort;
 
@@ -47,6 +54,9 @@ namespace Webserver
 
         public ControlServer(IPublicSettingsModule settingsModule, SessionModule sessionModule)
         {
+            // set the semaphore
+            _connectionSemaphore = new Semaphore(INIT_THREADS, MAX_THREADS);
+
             // Connect DB
             _mySqlModule = new MySqlModule();
 
@@ -82,6 +92,7 @@ namespace Webserver
 
             while (_isRunning)
             {
+                _connectionSemaphore.WaitOne();
                 TcpClient tcpclient = _tcpListener.AcceptTcpClient();
 
                 Thread clientThread = new Thread(new ParameterizedThreadStart(handleClient));
@@ -133,6 +144,7 @@ namespace Webserver
             }
 
             sslStream.Close();
+            _connectionSemaphore.Release();
         }
 
         private String readStream(SslStream stream)
