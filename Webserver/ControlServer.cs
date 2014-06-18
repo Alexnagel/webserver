@@ -209,7 +209,7 @@ namespace Webserver
             } 
             else
             {
-                if ((user = _sessionModule.CheckIPSession(sClientIP)) != null && !sRequestedFile.Equals("login.html"))
+                if ((user = _sessionModule.CheckIPSession(sClientIP)) != null && !sRequestedFile.Equals("login.html") && mimeType.Equals("text/html"))
                 {
                     handleGetRequest("GET /", sHttpVersion, sClientIP, sslStream);
                 }

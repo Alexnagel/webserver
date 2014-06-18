@@ -161,7 +161,6 @@ namespace Webserver
                 else
                     SendErrorPage(404, sHttpVersion, clientSocket);
             }
-                
 
             // Check file mimetype
             String mimeType = _fileModule.GetMimeType(sRequestedFile);
