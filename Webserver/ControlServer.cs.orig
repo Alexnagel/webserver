@@ -151,8 +151,6 @@ namespace Webserver
 
         private void handleGetRequest(String sRequest, String sHttpVersion, String sClientIP, SslStream sslStream)
         {
-            User user = null;
-
             // Replace the escaped slashes
             sRequest.Replace("\\", "/");
 
@@ -160,7 +158,7 @@ namespace Webserver
                 sRequest += "/";
 
             // Get the directory
-            String sRequestDirectoryName = sRequest.Substring(sRequest.IndexOf("/"), sRequest.LastIndexOf("/") - 4);
+            String sRequestDirectoryName = sRequest.Substring(sRequest.IndexOf("/"), sRequest.LastIndexOf("/") - 3);
             // If directory is root then give empty string
             sRequestDirectoryName = (sRequestDirectoryName.Equals("/")) ? "" : sRequestDirectoryName;
 
@@ -188,14 +186,6 @@ namespace Webserver
             {
                 SendErrorPage(404, sHttpVersion, sslStream);
                 return;
-            }
-
-            if (!sRequestedFile.Equals("login.html") && mimeType.Equals("text/html"))
-            {
-                if ((user = _sessionModule.CheckIPSession(sClientIP)) == null)
-                {
-                    handleGetRequest("/", sHttpVersion, sClientIP, sslStream);
-                }
             }
 
             // File to bytes
@@ -258,22 +248,26 @@ namespace Webserver
         {
             switch(sPostMethod)
             {
-                case "info":       loginMethod(sPostMethod, dPostData, sRequestedFile, sRequest, sHttpVersion, sClientIP, sslStream); break; // from login to info
-                case "login":      loginMethod(sPostMethod, dPostData, sRequestedFile, sRequest, sHttpVersion, sClientIP, sslStream); break;
-                case "createuser": handleGetRequest(sRequest, sHttpVersion, sClientIP, sslStream); break;
-                case "new":        createMethod(sPostMethod, dPostData, sRequestedFile, sRequest, sHttpVersion, sClientIP, sslStream); break;
+<<<<<<< HEAD
+                case "login": loginMethod(sPostMethod, dPostData, sRequestedFile, sRequest, sHttpVersion, sClientIP, sslStream); break;
+                case "createuser": loginMethod(sPostMethod, dPostData, sRequestedFile, sRequest, sHttpVersion, sClientIP, sslStream); break;
+=======
+                case "info": loginMethod(sPostMethod, dPostData, sRequestedFile, sRequest, sHttpVersion, sslStream); break; // from login to info
+                case "login": loginMethod(sPostMethod, dPostData, sRequestedFile, sRequest, sHttpVersion, sslStream); break;
+                case "createuser": redirect(sRequestedFile, sRequest, sHttpVersion, sslStream); break; // from info to add new user
+>>>>>>> dc5d622b60daf8521669a006071caf0d16535a77
+                case "new": createMethod(sPostMethod, dPostData, sRequestedFile, sRequest, sHttpVersion, sslStream); break;
+                
                 default: SendErrorPage(404, sHttpVersion, sslStream); break;
             }
         }
 
-        private void createMethod(String sPostMethod, Dictionary<String,String> dPostData, String sRequestedFile, String sRequest, String sHttpVersion, String sClientIP, SslStream sslStream)
+        private void createMethod(String sPostMethod, Dictionary<String,String> dPostData, String sRequestedFile, String sRequest, String sHttpVersion, SslStream sslStream)
         {
             String username = dPostData.ElementAt(0).Value;
             String password = dPostData.ElementAt(1).Value;
             String right = dPostData.ElementAt(2).Value;
             _mySqlModule.CreateUser(username, password, right);
-
-            handleGetRequest(sRequest, sHttpVersion, sClientIP, sslStream);
         }
 
         private void loginMethod(String sPostMethod, Dictionary<String, String> dPostData, String sRequestedFile, String sRequest, String sHttpVersion, String sClientIP, SslStream sslStream)
@@ -285,12 +279,54 @@ namespace Webserver
             User loggedInUser = _sessionModule.LoginUser(sClientIP, username, password, out warning);
             if(warning == Warning.NONE && username != null)
             {
-                handleGetRequest(sRequest, sHttpVersion, sClientIP, sslStream);
+                redirect(sRequestedFile, sRequest, sHttpVersion, sslStream);
             }
             else
             {
                 //SendErrorPage(400, sHttpVersion, sslStream);
             }
+        }
+
+        private void redirect(String sRequestedFile, String sRequest, String sHttpVersion, SslStream sslStream)
+        {
+            // send everything to browsers if login is true
+            // Get the directory
+            String sRequestDirectoryName = sRequest.Substring(sRequest.IndexOf("/"), sRequest.LastIndexOf("/") - 4);
+            // If directory is root then give empty string
+            sRequestDirectoryName = (sRequestDirectoryName.Equals("/")) ? "" : sRequestDirectoryName;
+
+            // Add 'control' to directory name, as it's the control server
+            String sDirectoryName = _fileModule.CombinePaths("control", sRequestDirectoryName);
+
+            // Check if localPath exists
+            String sLocalPath = _fileModule.GetLocalPath(sDirectoryName);
+            if (String.IsNullOrEmpty(sLocalPath))
+            {
+                SendErrorPage(404, sHttpVersion, sslStream);
+                return;
+            }
+
+            // Check if file is given, get default file if not given
+            //String sRequestedFile = sRequest.Substring(sRequest.LastIndexOf("/") + 1);
+            if (string.IsNullOrEmpty(sRequestedFile))
+            {
+                sRequestedFile = _fileModule.GetControlDefaultPage(sLocalPath);
+            }
+
+            // Check file mimetype
+            String mimeType = _fileModule.GetMimeType(sRequestedFile);
+            if (String.IsNullOrEmpty(mimeType))
+            {
+                SendErrorPage(404, sHttpVersion, sslStream);
+                return;
+            }
+
+            // File to bytes
+            String sPhysicalFilePath = Path.Combine(sLocalPath, sRequestedFile);
+            byte[] bFileBytes = _fileModule.FileToBytes(sPhysicalFilePath);
+
+            SendHeader(sHttpVersion, mimeType, bFileBytes.Length, "200 OK", sslStream);
+            SendToBrowser(bFileBytes, sslStream);
         }
     }
 }

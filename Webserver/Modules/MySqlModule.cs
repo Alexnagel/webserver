@@ -7,6 +7,9 @@ using MySql.Data.MySqlClient;
 using System.Windows.Forms;
 using System.Data.SqlClient;
 using System.Security.Cryptography;
+using Webserver.Enums;
+using Webserver.Models;
+using System.Data;
 
 namespace Webserver.Modules
 {
@@ -75,44 +78,45 @@ namespace Webserver.Modules
             }
         }
 
-        // Check for valid login credentials
-        public Dictionary<bool,string> CheckUser(String username, String password)
+        public User CheckUser(String username, String password)
         {
-            
-            Dictionary<bool, string> loginCred = new Dictionary<bool, string>();
-            String query = "SELECT rights FROM user WHERE username=@User AND password=@Pass;";
+            String query = "SELECT * FROM user WHERE username=@User AND password=@Pass;";
             String sHashedPassword = createMD5Hash(password);
+            User user = null;
 
             if(this.OpenConnection() == true)
             {
                 MySqlCommand cmd = new MySqlCommand(query, connection);
                 cmd.Parameters.AddWithValue("@User", username);
                 cmd.Parameters.AddWithValue("@Pass", sHashedPassword);
-                MySqlDataReader dr = cmd.ExecuteReader();
-                String result = "";
-                while (dr.Read())
+                
+                MySqlDataReader dr      = cmd.ExecuteReader();
+                DataTable dtUserInfo    = new DataTable();
+                dtUserInfo.Load(dr);
+                
+                if(dtUserInfo.Rows.Count > 0)
                 {
-                    result = dr[0].ToString();
-                }
+                    int id                = int.Parse(dtUserInfo.Rows[0]["id"].ToString());
+                    UserRights userRights = (UserRights)int.Parse(dtUserInfo.Rows[0]["rights"].ToString());
 
-                if(!string.IsNullOrEmpty(result))
-                {
-                    loginCred.Add(true, result);
-                }
-                else
-                {
-                    loginCred.Add(false, result);
+                    user = new User(id, dtUserInfo.Rows[0]["username"].ToString(), userRights, DateTime.Now);
                 }
                 this.CloseConnection();
             }
 
-            return loginCred;
+            return user;
         }
 
         // Create a new user
-        public void CreateUser(String username, String password, String rights)
+        public void CreateUser(String username, String password, string rights)
         {
             string query = @"INSERT INTO user (id, username, password, rights) VALUES(@Id, @Username, @Password, @Rights)";
+            int iRights = 0;
+            switch(rights)
+            {
+                case "beheerder": iRights = 1 ; break;
+                case "ondersteuner": iRights = 2; break;
+            }
 
             //open connection
             if (this.OpenConnection() == true)
@@ -133,7 +137,7 @@ namespace Webserver.Modules
                 cmd.Parameters.AddWithValue("Id", count);
                 cmd.Parameters.AddWithValue("Username", username);
                 cmd.Parameters.AddWithValue("Password", sHashedPassword);
-                cmd.Parameters.AddWithValue("Rights", rights);
+                cmd.Parameters.AddWithValue("Rights", iRights);
 
                 //Execute command
                 cmd.ExecuteNonQuery();

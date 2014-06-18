@@ -21,6 +21,7 @@ namespace Webserver
             }
 
             sBuffer = sBuffer + sHttpVersion + " " + sStatusCode + "\r\n";
+            //sBuffer = sBuffer + ""
             sBuffer = sBuffer + "Server: C#Server\r\n";
             sBuffer = sBuffer + "Content-Type: " + sMIMEHeader + "\r\n";
             sBuffer = sBuffer + "Accept-Ranges: bytes\r\n";
