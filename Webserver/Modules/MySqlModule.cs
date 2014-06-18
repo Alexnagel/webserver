@@ -147,6 +147,53 @@ namespace Webserver.Modules
             }
         }
 
+        public Boolean DeleteUser(int id)
+        {
+            if (OpenConnection() == true)
+            {
+                String sQuery = "DELETE FROM user WHERE id=@id";
+                MySqlCommand mysqlCommand = new MySqlCommand(sQuery, connection);
+                mysqlCommand.Parameters.AddWithValue("id", id);
+
+                int rowsDeleted = mysqlCommand.ExecuteNonQuery();
+
+                CloseConnection();
+                if (rowsDeleted == 1)
+                    return true;
+                else
+                    return false;
+            }
+            return false;
+        }
+
+        public List<User> GetAllUsers()
+        {
+            String query = "SELECT * FROM user;";
+            List<User> users = new List<User>();
+
+            if (this.OpenConnection() == true)
+            {
+                MySqlCommand cmd = new MySqlCommand(query, connection);
+
+                MySqlDataReader dr = cmd.ExecuteReader();
+                DataTable dtUserInfo = new DataTable();
+                dtUserInfo.Load(dr);
+
+                if (dtUserInfo.Rows.Count > 0)
+                {
+                    for (int i = 0; i < dtUserInfo.Rows.Count; i++)
+                    {
+                        int id = int.Parse(dtUserInfo.Rows[i]["id"].ToString());
+                        UserRights userRights = (UserRights)int.Parse(dtUserInfo.Rows[i]["rights"].ToString());
+
+                        users.Add(new User(id, dtUserInfo.Rows[i]["username"].ToString(), userRights, DateTime.Now));
+                    }
+                }
+                this.CloseConnection();
+            }
+            return users;
+        }
+
         // Create hash for security in password
         private String createMD5Hash(String sToHash)
         {

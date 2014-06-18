@@ -23,6 +23,8 @@ namespace Webserver
         private const string CERTIFICATE_PATH = @"Data\webserverCA.pfx";
         private const string CERTIFICATE_PASSWORD = "webserver";
         private const string SETTINGS_CHANGED_PAGE = @"Data\Templates\Settingschanged.html";
+        private const string LOGGED_OUT_TEMPLATE = @"Data\Templates\LogoutTemplate.html";
+        private const string USER_ROW = @"Data\Templates\UserRow.html";
 
         // set threads
         private const int INIT_THREADS = 20;
@@ -241,7 +243,7 @@ namespace Webserver
             {
                 if ((user = _sessionModule.CheckIPSession(sClientIP)) == null)
                     handleGetRequest("GET /", sHttpVersion, sClientIP, sslStream);
-                else if (sRequestedFile.Equals("admin.html") && user.UserRight != UserRights.ADMIN)
+                else if (user.UserRight == UserRights.USER && (!sRequestedFile.Equals("user.html") && !sRequestedFile.Equals("logs.html")))
                     SendErrorPage(404, sHttpVersion, sslStream);
             } 
             else if ((user = _sessionModule.CheckIPSession(sClientIP)) != null && sRequestedFile.Equals("login.html"))
@@ -256,6 +258,7 @@ namespace Webserver
             {
                 case "user.html":
                 case "admin.html": buildAdminPage(user, sHttpVersion, sslStream); return;
+                case "users.html": buildUserOverview(sHttpVersion, sslStream); return;
             }
 
             // File to bytes
@@ -315,24 +318,40 @@ namespace Webserver
         {
             switch(sPostMethod)
             {
-                case "info": if (dPostData.Count < 3) loginMethod(sPostMethod, dPostData, sRequestedFile, sRequest, sHttpVersion, sClientIP, sslStream); else createMethod(sPostMethod, dPostData, sRequestedFile, sRequest, sHttpVersion, sClientIP, sslStream); break; // from login to info
-                case "controlpanel": loginMethod(sPostMethod, dPostData, sRequestedFile, sRequest, sHttpVersion, sClientIP, sslStream); break;
-                case "login":      loginMethod(sPostMethod, dPostData, sRequestedFile, sRequest, sHttpVersion, sClientIP, sslStream); break;
-                case "createuser": handleGetRequest(sRequest, sHttpVersion, sClientIP, sslStream); break;
-                case "new":        createMethod(sPostMethod, dPostData, sRequestedFile, sRequest, sHttpVersion, sClientIP, sslStream); break;
-                case "save":       saveSettings(dPostData, sHttpVersion, sslStream); break; // update settings
+                case "info": if (dPostData.Count < 3) loginMethod(sPostMethod, dPostData, sRequestedFile, sRequest, sHttpVersion, sClientIP, sslStream); else createMethod(dPostData, sHttpVersion, sClientIP, sslStream); break; // from login to info
+                case "login":           loginMethod(sPostMethod, dPostData, sRequestedFile, sRequest, sHttpVersion, sClientIP, sslStream); break;
+                case "logout":          logOutMethod(sHttpVersion, sClientIP, sslStream); break; 
+                case "newuser":         createMethod(dPostData, sHttpVersion, sClientIP, sslStream); break;
+                case "deleteuser":      deleteMethod(dPostData, sHttpVersion, sslStream); break;
+                case "save":            saveSettings(dPostData, sHttpVersion, sslStream); break; // update settings
                 default: SendErrorPage(404, sHttpVersion, sslStream); break;
             }
         }
 
-        private void createMethod(String sPostMethod, Dictionary<String,String> dPostData, String sRequestedFile, String sRequest, String sHttpVersion, String sClientIP, SslStream sslStream)
+        private void createMethod(Dictionary<String,String> dPostData, String sHttpVersion, String sClientIP, SslStream sslStream)
         {
             String username = dPostData.ElementAt(0).Value;
             String password = dPostData.ElementAt(1).Value;
             String right = dPostData.ElementAt(2).Value;
             _mySqlModule.CreateUser(username, password, right);
 
-            handleGetRequest(sRequest, sHttpVersion, sClientIP, sslStream);
+            handleGetRequest("GET /users", sHttpVersion, sClientIP, sslStream);
+        }
+
+        private void deleteMethod(Dictionary<String,String> dPostData, String sHttpVersion, SslStream sslStream)
+        {
+            Boolean success = false;
+            try
+            {
+                success = _mySqlModule.DeleteUser(int.Parse(dPostData["id"]));
+            }
+            catch(FormatException)
+            {
+                
+            }
+            byte[] bPage = Encoding.ASCII.GetBytes("{\"success\": \"" + success + "\"}");
+            SendHeader(sHttpVersion, "application/json", bPage.Length, "200 OK", sslStream);
+            SendToBrowser(bPage, sslStream);
         }
 
         private void loginMethod(String sPostMethod, Dictionary<String, String> dPostData, String sRequestedFile, String sRequest, String sHttpVersion, String sClientIP, SslStream sslStream)
@@ -350,6 +369,20 @@ namespace Webserver
             {
                 SendErrorPage(400, sHttpVersion, sslStream);
             }
+        }
+
+        private void logOutMethod(String sHttpVersion, String sClientIP, SslStream sslStream)
+        {
+            _sessionModule.LogOutUser(sClientIP);
+
+            String sLoggedoutPath = Path.Combine(Environment.CurrentDirectory, LOGGED_OUT_TEMPLATE);
+            String sLoggedout = "";
+            using (StreamReader sr = new StreamReader(sLoggedoutPath))
+                sLoggedout = sr.ReadToEnd();
+
+            byte[] bPage = Encoding.ASCII.GetBytes(sLoggedout);
+            SendHeader(sHttpVersion, "", bPage.Length, "200 OK", sslStream);
+            SendToBrowser(bPage, sslStream);
         }
 
         private void buildAdminPage(User user, String sHttpVersion, SslStream sslStream)
@@ -395,11 +428,38 @@ namespace Webserver
             _settingsChanged = true;
 
             String sSettingsChangedPath = Path.Combine(Environment.CurrentDirectory, SETTINGS_CHANGED_PAGE);
-            String sSettingsChanged = "";
-            using (StreamReader sr = new StreamReader(sSettingsChangedPath))
-                sSettingsChanged = sr.ReadToEnd();
+            String sSettingsChanged = _fileModule.GetFileString(sSettingsChangedPath);
 
             byte[] bPage = Encoding.ASCII.GetBytes(sSettingsChanged);
+            SendHeader(sHttpVersion, "", bPage.Length, "200 OK", sslStream);
+            SendToBrowser(bPage, sslStream);
+        }
+
+        private void buildUserOverview(String sHttpVersion, SslStream sslStream)
+        {
+            List<User> lUsers           = _mySqlModule.GetAllUsers();
+            String sUserOverViewPath    = Path.Combine(_fileModule.GetLocalPath("control"), "users.html");
+            String sUserOverView        = _fileModule.GetFileString(sUserOverViewPath);
+
+            String sUserRowPath         = Path.Combine(Environment.CurrentDirectory, USER_ROW);
+            String sUserRow             = _fileModule.GetFileString(sUserRowPath);
+            String sUserRows            = "";
+
+            if (lUsers.Count > 0)
+            {
+                for (int i = 0; i < lUsers.Count; i++)
+                {
+
+                    sUserRows += sUserRow.Replace("{{id}}", lUsers[i].ID.ToString()).Replace("{{username}}", lUsers[i].Username).Replace("{{userrights}}", lUsers[i].UserRight.ToString()) + "\n";
+                }
+            }
+            else
+            {
+                sUserRows = "<tr><td></td><td>No Users Found</td><td></td></tr>";
+            }
+
+            sUserOverView = sUserOverView.Replace("{{users}}", sUserRows);
+            byte[] bPage = Encoding.ASCII.GetBytes(sUserOverView);
             SendHeader(sHttpVersion, "", bPage.Length, "200 OK", sslStream);
             SendToBrowser(bPage, sslStream);
         }

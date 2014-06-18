@@ -32,7 +32,10 @@ namespace Webserver.Modules
             {"jpg", "image/jpeg"},
             {"js", "application/x-javascript"},
             {"png", "image/png"},
-            {"xhtml", "application/xhtml+xml"}
+            {"xhtml", "application/xhtml+xml"},
+            {"woff", "application/font-woff"},
+            {"ttf", "application/x-font-truetype"},
+            {"svg", "image/svg+xml"}
         };
 
         private XmlModule xmlModule;

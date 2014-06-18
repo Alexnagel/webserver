@@ -99,23 +99,23 @@ namespace Webserver
         private void handleClient(object client)
         {
             Socket socketClient = (Socket)client;
-            // Use to write to the browser, needed for AbstractServer
-            // BufferedStream because it's 5x faster, don't ask me why
-            BufferedStream stream = new BufferedStream(new NetworkStream(socketClient));
 
-            Stopwatch stopWatch = new Stopwatch();
-            stopWatch.Start();
+            /*Stopwatch stopWatch = new Stopwatch();
+            stopWatch.Start();*/
             if (socketClient.Connected)
             {
                 Byte[] receivedBytes = new Byte[1024];
-                Byte[] receivedBytes2 = new Byte[1024];
                 int i = socketClient.Receive(receivedBytes, receivedBytes.Length, 0);
-
+                Console.WriteLine(i);
                 string sBuffer = Encoding.ASCII.GetString(receivedBytes);
                 sBuffer = sBuffer.Trim('\0');
 
                 if (sBuffer.Length > 0)
                 {
+                    // Use to write to the browser, needed for AbstractServer
+                    // BufferedStream because it's 5x faster, don't ask me why
+                    BufferedStream stream = new BufferedStream(new NetworkStream(socketClient));
+
                     // Look for HTTP request
                     int iStartPos = sBuffer.IndexOf("HTTP", 1);
                     string sHttpVersion = null;
@@ -132,11 +132,11 @@ namespace Webserver
                         default: SendErrorPage(400, sHttpVersion, stream); return;
                     }
                 }
-                stopWatch.Stop();
+                /*stopWatch.Stop();
                 TimeSpan ts = stopWatch.Elapsed;
                 string newDate = DateTime.Now.ToString("yyyy-MM-dd HH':'mm':'ss");
                 string elapsedTime = ts.Milliseconds.ToString();
-                Console.WriteLine("LOG - IP : " + _serverIP + ", Date : " + newDate + ", responsetime : " + elapsedTime + ", URL : ");
+                Console.WriteLine("LOG - IP : " + _serverIP + ", Date : " + newDate + ", responsetime : " + elapsedTime + ", URL : ");*/
             }
             _connectionSemaphore.Release();
         }
@@ -151,8 +151,8 @@ namespace Webserver
             String sDirectoryName = sRequest.Substring(sRequest.IndexOf("/"), sRequest.LastIndexOf("/") - 3);
             String sRequestedFile = sRequest.Substring(sRequest.LastIndexOf("/") + 1);
 
-            Console.WriteLine(sDirectoryName);
-            Console.WriteLine(sRequestedFile);
+            /*Console.WriteLine(sDirectoryName);
+            Console.WriteLine(sRequestedFile);*/
 
             // Check if localpath exists
             String sLocalPath = _fileModule.GetLocalPath(sDirectoryName);
