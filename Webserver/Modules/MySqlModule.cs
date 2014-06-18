@@ -35,7 +35,6 @@ namespace Webserver.Modules
             database + ";" + "UID=" + uid + ";" + "PASSWORD=" + password + ";";
 
             connection = new MySqlConnection(connectionString);
-            //Insert();
         }
 
         private bool OpenConnection()
@@ -76,6 +75,7 @@ namespace Webserver.Modules
             }
         }
 
+        // Check for valid login credentials
         public Dictionary<bool,string> CheckUser(String username, String password)
         {
             
@@ -109,6 +109,7 @@ namespace Webserver.Modules
             return loginCred;
         }
 
+        // Create a new user
         public void CreateUser(String username, String password, String rights)
         {
             string query = @"INSERT INTO user (id, username, password, rights) VALUES(@Id, @Username, @Password, @Rights)";
@@ -142,6 +143,7 @@ namespace Webserver.Modules
             }
         }
 
+        // Create hash for security in password
         private String createMD5Hash(String sToHash)
         {
             // Add salt to string
