@@ -182,20 +182,20 @@ namespace Webserver
                 sRequestedFile = _fileModule.GetControlDefaultPage(sLocalPath);
             }
 
-            if (!sRequestedFile.Equals("login.html"))
-            {
-                if ((user = _sessionModule.CheckIPSession(sClientIP)) == null)
-                {
-                    handleGetRequest("/", sHttpVersion, sClientIP, sslStream);
-                }
-            }
-
             // Check file mimetype
             String mimeType = _fileModule.GetMimeType(sRequestedFile);
             if (String.IsNullOrEmpty(mimeType))
             {
                 SendErrorPage(404, sHttpVersion, sslStream);
                 return;
+            }
+
+            if (!sRequestedFile.Equals("login.html") && mimeType.Equals("text/html"))
+            {
+                if ((user = _sessionModule.CheckIPSession(sClientIP)) == null)
+                {
+                    handleGetRequest("/", sHttpVersion, sClientIP, sslStream);
+                }
             }
 
             // File to bytes
