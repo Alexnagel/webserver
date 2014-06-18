@@ -118,5 +118,20 @@ namespace Webserver.Modules
             else
                 return null;
         }
+
+        public String GetFileString(String sFilePath)
+        {
+            StreamReader streamReader = null;
+            if (File.Exists(sFilePath))
+            {
+                streamReader = new StreamReader(sFilePath);
+            }
+            else
+            {
+                return "";
+            }
+
+            return streamReader.ReadToEnd();
+        }
     }
 }
