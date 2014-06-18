@@ -25,6 +25,7 @@ namespace Webserver
         private const string SETTINGS_CHANGED_PAGE = @"Data\Templates\Settingschanged.html";
         private const string LOGGED_OUT_TEMPLATE = @"Data\Templates\LogoutTemplate.html";
         private const string USER_ROW = @"Data\Templates\UserRow.html";
+        private const string LOG_ROW = @"Data\Templates\LogRow.html";
 
         // set threads
         private const int INIT_THREADS = 20;
@@ -46,6 +47,9 @@ namespace Webserver
         // Session Module
         private SessionModule _sessionModule;
 
+        // Log Modul
+        private LogModule _logModule;
+
         // Dictionary for all mimetypes
         private Dictionary<string, string> _allowedMimeTypes;
 
@@ -58,7 +62,7 @@ namespace Webserver
 
         private Boolean _settingsChanged;
 
-        public ControlServer(IPublicSettingsModule settingsModule, SessionModule sessionModule)
+        public ControlServer(IPublicSettingsModule settingsModule, SessionModule sessionModule, LogModule logModule)
         {
             // set the semaphore
             _connectionSemaphore = new Semaphore(INIT_THREADS, MAX_THREADS);
@@ -75,6 +79,8 @@ namespace Webserver
 
             // Set the SessionModule 
             _sessionModule = sessionModule;
+
+            _logModule = logModule;
 
             // set ip adress
             _serverIP = IPAddress.Parse("127.0.0.1");
@@ -259,6 +265,7 @@ namespace Webserver
                 case "user.html":
                 case "admin.html": buildAdminPage(user, sHttpVersion, sslStream); return;
                 case "users.html": buildUserOverview(sHttpVersion, sslStream); return;
+                case: "logs.html": buildLogsPage(sHttpVersion, sslStream); return;
             }
 
             // File to bytes
@@ -460,6 +467,27 @@ namespace Webserver
 
             sUserOverView = sUserOverView.Replace("{{users}}", sUserRows);
             byte[] bPage = Encoding.ASCII.GetBytes(sUserOverView);
+            SendHeader(sHttpVersion, "", bPage.Length, "200 OK", sslStream);
+            SendToBrowser(bPage, sslStream);
+        }
+
+        private void buildLogsPage(String sHttpVersion, SslStream sslStream)
+        {
+            String sLogOverviewPath = Path.Combine(_fileModule.GetLocalPath("control"), "logs.html");
+            String sLogOverview = _fileModule.GetFileString(sLogOverviewPath);
+            String sLogRowPath = Path.Combine(Environment.CurrentDirectory, LOG_ROW);
+            String sLogRow = _fileModule.GetFileString(sLogRowPath);
+            String sLogRows = "";
+
+            List<String> lLogs = _logModule.GetAllLogs();
+            foreach(String log in lLogs)
+            {
+                String[] saLog = log.Split(';');
+                sLogRows += sLogRow.Replace("{{ip}}", saLog[0]).Replace("{{requestdate}}", saLog[1]).Replace("{{requesttime}}", saLog[2]).Replace("{{url}}", saLog[3]) + "\n";
+            }
+            sLogOverview = sLogOverview.Replace("{{logs}}", sLogRows);
+
+            byte[] bPage = Encoding.ASCII.GetBytes(sLogOverview);
             SendHeader(sHttpVersion, "", bPage.Length, "200 OK", sslStream);
             SendToBrowser(bPage, sslStream);
         }

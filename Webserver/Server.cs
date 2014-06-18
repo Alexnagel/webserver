@@ -35,7 +35,7 @@ namespace Webserver
 
         // Dictionary for all mimetypes
         private Dictionary<string, string> _allowedMimeTypes;
-        public Server(IPublicSettingsModule settingsModule)
+        public Server(IPublicSettingsModule settingsModule, LogModule logModule)
         {
             // set the semaphore
             _connectionSemaphore = new Semaphore(INIT_THREADS, MAX_THREADS);
@@ -50,7 +50,7 @@ namespace Webserver
             _fileModule = new FileModule();
             
             // set logger
-            _logModule = new LogModule(_serverIP.ToString());
+            _logModule = logModule;
 
             // get allowed Mimetypes
             _allowedMimeTypes = _serverSettingsModule.getAllowedMIMETypes();

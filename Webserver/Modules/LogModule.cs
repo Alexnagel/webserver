@@ -12,9 +12,9 @@ namespace Webserver.Modules
     {
         private String _serverIP;
 
-        public LogModule(String serverIP)
+        public LogModule()
         {
-            this._serverIP = serverIP;
+            this._serverIP = "";
         }
 
         public void writeInfo(ref Socket client, String sDirectoryName, String sRequestedFile, String webserverRoot)
@@ -25,6 +25,11 @@ namespace Webserver.Modules
             //String line = "LOG : " + DateTime.Now + " " + client.LocalEndPoint + sDirectoryName + sRequestedFile;
             //sw.WriteLine(line);
             //sw.Close();
+        }
+
+        public List<String> GetAllLogs()
+        {
+            return new List<string>();
         }
     }
 }

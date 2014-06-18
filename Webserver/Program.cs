@@ -14,6 +14,7 @@ namespace Webserver
         private static IPublicSettingsModule _settingsModule;
         private static SessionModule         _sessionModule;
         private static MySqlModule           _mysqlModule;
+        private static LogModule             _logModule;
 
         private static Thread _controlServerThread;
         private static Thread _webServerThread;
@@ -26,8 +27,9 @@ namespace Webserver
 
             // Set modules
             _settingsModule = new SettingsModule();
-            _mysqlModule = new MySqlModule();
-            _sessionModule = new SessionModule(_mysqlModule);
+            _mysqlModule    = new MySqlModule();
+            _sessionModule  = new SessionModule(_mysqlModule);
+            _logModule      = new LogModule();
 
             // Add settings event listener
             _settingsModule.SettingsUpdated += restartServers;
@@ -40,10 +42,10 @@ namespace Webserver
         private static void initServers(IPublicSettingsModule settingsModule)
         {
             //Create threads for each server
-            _controlServerThread = new Thread(() => new ControlServer(_settingsModule, _sessionModule));
+            _controlServerThread = new Thread(() => new ControlServer(_settingsModule, _sessionModule, _logModule));
             _controlServerThread.Start();
 
-            _webServerThread = new Thread(() => new Server(_settingsModule));
+            _webServerThread = new Thread(() => new Server(_settingsModule, _logModule));
             _webServerThread.Start();
         }
 
