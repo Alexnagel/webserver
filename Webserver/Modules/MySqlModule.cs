@@ -6,11 +6,13 @@ using System.Threading.Tasks;
 using MySql.Data.MySqlClient;
 using System.Windows.Forms;
 using System.Data.SqlClient;
+using System.Security.Cryptography;
 
 namespace Webserver.Modules
 {
     class MySqlModule
     {
+        private const String SALT = "y6&!sVu?TfwO:<p!^-/;(<$HrEVDFg57Gr_j-p_g[u.-`{a|@ZZNhK-i+Z+rHbv7";
         private MySqlConnection connection;
         private string server;
         private string database;
@@ -77,12 +79,14 @@ namespace Webserver.Modules
         public Dictionary<bool,string> CheckUser(String username, String password)
         {
             Dictionary<bool, string> loginCred = new Dictionary<bool, string>();
-            string query = "SELECT rights FROM user WHERE username=@User AND password=@Pass;";
+            String query = "SELECT rights FROM user WHERE username=@User AND password=@Pass;";
+            String sHashedPassword = createMD5Hash(password + SALT);
+
             if(this.OpenConnection() == true)
             {
                 MySqlCommand cmd = new MySqlCommand(query, connection);
                 cmd.Parameters.AddWithValue("@User", username);
-                cmd.Parameters.AddWithValue("@Pass", password);
+                cmd.Parameters.AddWithValue("@Pass", sHashedPassword);
                 MySqlDataReader dr = cmd.ExecuteReader();
                 String result = "";
                 while (dr.Read())
@@ -113,12 +117,15 @@ namespace Webserver.Modules
             {
                 //create command and assign the query and connection from the constructor
                 MySqlCommand cmd = new MySqlCommand(query, connection);
-
+                
+                // Create hashed password
+                String sHashedPassword = createMD5Hash(password);
+                
                 // Add parameters to prevent sql injection
-                cmd.Parameters.Add("Id", 2);
-                cmd.Parameters.Add("Username", username);
-                cmd.Parameters.Add("Password", password);
-                cmd.Parameters.Add("Rights", rights);
+                cmd.Parameters.AddWithValue("Id", 2);
+                cmd.Parameters.AddWithValue("Username", username);
+                cmd.Parameters.AddWithValue("Password", password);
+                cmd.Parameters.AddWithValue("Rights", rights);
 
                 //Execute command
                 cmd.ExecuteNonQuery();
@@ -126,6 +133,23 @@ namespace Webserver.Modules
                 //close connection
                 this.CloseConnection();
             }
+        }
+
+        private String createMD5Hash(String sToHash)
+        {
+            // Add salt to string
+            sToHash += SALT;
+
+            MD5 hasher = MD5.Create();
+            byte[] bHashedString = hasher.ComputeHash(Encoding.ASCII.GetBytes(sToHash));
+
+            StringBuilder sHashedString = new StringBuilder();
+            for(int i = 0; i < bHashedString.Length; i++)
+            {
+                sHashedString.Append(bHashedString[i].ToString("x2"));
+            }
+            return sHashedString.ToString();
+
         }
     }
 }
