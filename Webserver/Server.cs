@@ -156,10 +156,12 @@ namespace Webserver
 
             if (String.IsNullOrWhiteSpace(sRequestedFile) && _publicSettingsModule.GetAllowedDirectoryBrowsing())
             {
-                createDirectoryBrowsing(sLocalPath, sDirectoryName, sHttpVersion, clientSocket);
+                if (_publicSettingsModule.GetAllowedDirectoryBrowsing())
+                    createDirectoryBrowsing(sLocalPath, sDirectoryName, sHttpVersion, clientSocket);
+                else
+                    SendErrorPage(404, sHttpVersion, clientSocket);
             }
-            else
-                SendErrorPage(404, sHttpVersion, clientSocket);
+                
 
             // Check file mimetype
             String mimeType = _fileModule.GetMimeType(sRequestedFile);
