@@ -78,9 +78,10 @@ namespace Webserver.Modules
 
         public Dictionary<bool,string> CheckUser(String username, String password)
         {
+            
             Dictionary<bool, string> loginCred = new Dictionary<bool, string>();
             String query = "SELECT rights FROM user WHERE username=@User AND password=@Pass;";
-            String sHashedPassword = createMD5Hash(password + SALT);
+            String sHashedPassword = createMD5Hash(password);
 
             if(this.OpenConnection() == true)
             {
@@ -115,6 +116,12 @@ namespace Webserver.Modules
             //open connection
             if (this.OpenConnection() == true)
             {
+                // Check rows for to get ID+1
+                string idQuery = "SELECT COUNT(*)+1 FROM user";
+                MySqlCommand idCmd = new MySqlCommand(idQuery, connection);
+                object tempCount = idCmd.ExecuteScalar();
+                int count = int.Parse(tempCount.ToString());
+
                 //create command and assign the query and connection from the constructor
                 MySqlCommand cmd = new MySqlCommand(query, connection);
                 
@@ -122,9 +129,9 @@ namespace Webserver.Modules
                 String sHashedPassword = createMD5Hash(password);
                 
                 // Add parameters to prevent sql injection
-                cmd.Parameters.AddWithValue("Id", 2);
+                cmd.Parameters.AddWithValue("Id", count);
                 cmd.Parameters.AddWithValue("Username", username);
-                cmd.Parameters.AddWithValue("Password", password);
+                cmd.Parameters.AddWithValue("Password", sHashedPassword);
                 cmd.Parameters.AddWithValue("Rights", rights);
 
                 //Execute command
