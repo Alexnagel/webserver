@@ -38,7 +38,6 @@ namespace Webserver.Modules
             database + ";" + "UID=" + uid + ";" + "PASSWORD=" + password + ";";
 
             connection = new MySqlConnection(connectionString);
-            //Insert();
         }
 
         private bool OpenConnection()
@@ -108,6 +107,7 @@ namespace Webserver.Modules
             return user;
         }
 
+        // Create a new user
         public void CreateUser(String username, String password, String rights)
         {
             string query = @"INSERT INTO user (id, username, password, rights) VALUES(@Id, @Username, @Password, @Rights)";
@@ -115,6 +115,12 @@ namespace Webserver.Modules
             //open connection
             if (this.OpenConnection() == true)
             {
+                // Check rows for to get ID+1
+                string idQuery = "SELECT COUNT(*)+1 FROM user";
+                MySqlCommand idCmd = new MySqlCommand(idQuery, connection);
+                object tempCount = idCmd.ExecuteScalar();
+                int count = int.Parse(tempCount.ToString());
+
                 //create command and assign the query and connection from the constructor
                 MySqlCommand cmd = new MySqlCommand(query, connection);
                 
@@ -122,9 +128,9 @@ namespace Webserver.Modules
                 String sHashedPassword = createMD5Hash(password);
                 
                 // Add parameters to prevent sql injection
-                cmd.Parameters.AddWithValue("Id", 2);
+                cmd.Parameters.AddWithValue("Id", count);
                 cmd.Parameters.AddWithValue("Username", username);
-                cmd.Parameters.AddWithValue("Password", password);
+                cmd.Parameters.AddWithValue("Password", sHashedPassword);
                 cmd.Parameters.AddWithValue("Rights", rights);
 
                 //Execute command
@@ -135,6 +141,7 @@ namespace Webserver.Modules
             }
         }
 
+        // Create hash for security in password
         private String createMD5Hash(String sToHash)
         {
             // Add salt to string

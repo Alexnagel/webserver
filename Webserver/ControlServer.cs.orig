@@ -151,8 +151,6 @@ namespace Webserver
 
         private void handleGetRequest(String sRequest, String sHttpVersion, String sClientIP, SslStream sslStream)
         {
-            User user = null;
-
             // Replace the escaped slashes
             sRequest.Replace("\\", "/");
 
@@ -180,14 +178,6 @@ namespace Webserver
             if (string.IsNullOrEmpty(sRequestedFile))
             {
                 sRequestedFile = _fileModule.GetControlDefaultPage(sLocalPath);
-            }
-
-            if (!sRequestedFile.Equals("login.html"))
-            {
-                if ((user = _sessionModule.CheckIPSession(sClientIP)) == null)
-                {
-                    handleGetRequest("/", sHttpVersion, sClientIP, sslStream);
-                }
             }
 
             // Check file mimetype
@@ -258,9 +248,15 @@ namespace Webserver
         {
             switch(sPostMethod)
             {
-                case "login":      loginMethod(sPostMethod, dPostData, sRequestedFile, sRequest, sHttpVersion, sClientIP, sslStream); break;
+<<<<<<< HEAD
+                case "login": loginMethod(sPostMethod, dPostData, sRequestedFile, sRequest, sHttpVersion, sClientIP, sslStream); break;
                 case "createuser": loginMethod(sPostMethod, dPostData, sRequestedFile, sRequest, sHttpVersion, sClientIP, sslStream); break;
-                case "new":        createMethod(sPostMethod, dPostData, sRequestedFile, sRequest, sHttpVersion, sslStream); break;
+=======
+                case "info": loginMethod(sPostMethod, dPostData, sRequestedFile, sRequest, sHttpVersion, sslStream); break; // from login to info
+                case "login": loginMethod(sPostMethod, dPostData, sRequestedFile, sRequest, sHttpVersion, sslStream); break;
+                case "createuser": redirect(sRequestedFile, sRequest, sHttpVersion, sslStream); break; // from info to add new user
+>>>>>>> dc5d622b60daf8521669a006071caf0d16535a77
+                case "new": createMethod(sPostMethod, dPostData, sRequestedFile, sRequest, sHttpVersion, sslStream); break;
                 
                 default: SendErrorPage(404, sHttpVersion, sslStream); break;
             }
