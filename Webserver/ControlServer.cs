@@ -10,7 +10,9 @@ using System.Security.Cryptography.X509Certificates;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using Webserver.Enums;
 using Webserver.Interfaces;
+using Webserver.Models;
 using Webserver.Modules;
 
 namespace Webserver
@@ -30,6 +32,9 @@ namespace Webserver
         // File Module
         private FileModule _fileModule;
 
+        // Session Module
+        private SessionModule _sessionModule;
+
         // Dictionary for all mimetypes
         private Dictionary<string, string> _allowedMimeTypes;
 
@@ -40,7 +45,7 @@ namespace Webserver
 
         private MySqlModule _mySqlModule;
 
-        public ControlServer(IPublicSettingsModule settingsModule)
+        public ControlServer(IPublicSettingsModule settingsModule, SessionModule sessionModule)
         {
             // Connect DB
             _mySqlModule = new MySqlModule();
@@ -51,6 +56,9 @@ namespace Webserver
 
             // Set the filemodule
             _fileModule = new FileModule();
+
+            // Set the SessionModule 
+            _sessionModule = sessionModule;
 
             // set ip adress
             _serverIP = IPAddress.Parse("127.0.0.1");
@@ -85,6 +93,9 @@ namespace Webserver
         {
             TcpClient tcpclient = (TcpClient)client;
 
+            IPEndPoint IPep = (IPEndPoint)tcpclient.Client.RemoteEndPoint;
+            String sClientIP = IPep.Address.ToString();
+            
             SslStream sslStream = new SslStream(tcpclient.GetStream(), false);
             sslStream.WriteTimeout = 100;
             ServicePointManager.SecurityProtocol = SecurityProtocolType.Ssl3;
@@ -105,8 +116,8 @@ namespace Webserver
                 string requestType = sBuffer.Substring(0, 4).Trim();
                 switch (requestType)
                 {
-                    case "GET": handleGetRequest(sBuffer.Substring(0, iStartPos - 1), sHttpVersion, sslStream); break;
-                    case "POST": handlePostRequest(sBuffer, sHttpVersion, sslStream); break;
+                    case "GET": handleGetRequest(sBuffer.Substring(0, iStartPos - 1), sHttpVersion, sClientIP, sslStream); break;
+                    case "POST": handlePostRequest(sBuffer, sHttpVersion, sClientIP, sslStream); break;
                     default: SendErrorPage(400, sHttpVersion, sslStream); return;
                 }
             }
@@ -138,7 +149,7 @@ namespace Webserver
             return readString;
         }
 
-        private void handleGetRequest(String sRequest, String sHttpVersion, SslStream sslStream)
+        private void handleGetRequest(String sRequest, String sHttpVersion, String sClientIP, SslStream sslStream)
         {
             // Replace the escaped slashes
             sRequest.Replace("\\", "/");
@@ -186,7 +197,7 @@ namespace Webserver
             SendToBrowser(bFileBytes, sslStream);
         }
 
-        private void handlePostRequest(String sRequest, String sHttpVersion, SslStream sslStream)
+        private void handlePostRequest(String sRequest, String sHttpVersion, String sClientIP, SslStream sslStream)
         {
             // Get the post data content length
             int iStartPos      = sRequest.IndexOf("Content-Length: ") + 16;
@@ -226,15 +237,16 @@ namespace Webserver
                 sPostMethod = Path.GetFileNameWithoutExtension(sRequestedFile);
             }
 
-            handlePostMethod(sPostMethod, dPostData, sRequestedFile, sRequest, sHttpVersion, sslStream);
+            handlePostMethod(sPostMethod, dPostData, sRequestedFile, sRequest, sHttpVersion, sClientIP, sslStream);
         }
 
-        private void handlePostMethod(String sPostMethod, Dictionary<String, String> dPostData, String sRequestedFile, String sRequest, String sHttpVersion, SslStream sslStream)
+        private void handlePostMethod(String sPostMethod, Dictionary<String, String> dPostData, String sRequestedFile, String sRequest, 
+            String sHttpVersion, String sClientIP, SslStream sslStream)
         {
             switch(sPostMethod)
             {
-                case "login": loginMethod(sPostMethod, dPostData, sRequestedFile, sRequest, sHttpVersion, sslStream); break;
-                case "createuser": loginMethod(sPostMethod, dPostData, sRequestedFile, sRequest, sHttpVersion, sslStream); break;
+                case "login": loginMethod(sPostMethod, dPostData, sRequestedFile, sRequest, sHttpVersion, sClientIP, sslStream); break;
+                case "createuser": loginMethod(sPostMethod, dPostData, sRequestedFile, sRequest, sHttpVersion, sClientIP, sslStream); break;
                 case "new": createMethod(sPostMethod, dPostData, sRequestedFile, sRequest, sHttpVersion, sslStream); break;
                 default: SendErrorPage(404, sHttpVersion, sslStream); break;
             }
@@ -248,13 +260,14 @@ namespace Webserver
             _mySqlModule.CreateUser(username, password, right);
         }
 
-        private void loginMethod(String sPostMethod, Dictionary<String, String> dPostData, String sRequestedFile, String sRequest, String sHttpVersion, SslStream sslStream)
+        private void loginMethod(String sPostMethod, Dictionary<String, String> dPostData, String sRequestedFile, String sRequest, String sHttpVersion, String sClientIP, SslStream sslStream)
         {
             String username = dPostData.ElementAt(0).Value;
             String password = dPostData.ElementAt(1).Value;
 
-            Dictionary<bool, string> loginResult = _mySqlModule.CheckUser(username, password);
-            if(loginResult.ElementAt(0).Key == true)
+            Warning warning;
+            User loggedInUser = _sessionModule.LoginUser(sClientIP, username, password, out warning);
+            if(warning == Warning.NONE && username != null)
             {
                 // send everything to browsers if login is true
                 // Get the directory

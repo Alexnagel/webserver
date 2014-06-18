@@ -19,9 +19,12 @@ namespace Webserver
             };
 
             IPublicSettingsModule settingsModule = new SettingsModule();
+
+            MySqlModule mysqlModule = new MySqlModule();
+            SessionModule sessionModule = new SessionModule(mysqlModule);
             
             //Create threads for each server
-            Thread controlServerThread = new Thread(() => new ControlServer(settingsModule));
+            Thread controlServerThread = new Thread(() => new ControlServer(settingsModule, sessionModule));
             controlServerThread.Start();
             Thread webServerThread = new Thread(() => new Server(settingsModule));
             webServerThread.Start();
