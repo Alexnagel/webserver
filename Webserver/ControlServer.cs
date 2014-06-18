@@ -100,7 +100,17 @@ namespace Webserver
             sslStream.WriteTimeout = 100;
             ServicePointManager.SecurityProtocol = SecurityProtocolType.Ssl3;
 
-            sslStream.AuthenticateAsServer(certificate);
+            try
+            {
+                sslStream.AuthenticateAsServer(certificate);
+            }
+            catch(Exception e)
+            {
+                // For stupid Chrome
+                sslStream.Close();
+                sslStream.Dispose();
+                return;
+            }
 
             String sBuffer = readStream(sslStream);
             Console.WriteLine(sBuffer);
@@ -118,7 +128,7 @@ namespace Webserver
                 {
                     case "GET": handleGetRequest(sBuffer.Substring(0, iStartPos - 1), sHttpVersion, sClientIP, sslStream); break;
                     case "POST": handlePostRequest(sBuffer, sHttpVersion, sClientIP, sslStream); break;
-                    default: SendErrorPage(400, sHttpVersion, sslStream); return;
+                    default: SendErrorPage(400, sHttpVersion, sslStream); break;
                 }
             }
 
@@ -193,6 +203,13 @@ namespace Webserver
             if (!sRequestedFile.Equals("login.html") && mimeType.Equals("text/html"))
             {
                 if ((user = _sessionModule.CheckIPSession(sClientIP)) == null)
+                    handleGetRequest("/", sHttpVersion, sClientIP, sslStream);
+                else if (sRequestedFile.Equals("admin.html") && user.UserRight != UserRights.ADMIN)
+                    SendErrorPage(404, sHttpVersion, sslStream);
+            } 
+            else
+            {
+                if ((user = _sessionModule.CheckIPSession(sClientIP)) != null)
                 {
                     handleGetRequest("/", sHttpVersion, sClientIP, sslStream);
                 }
@@ -262,6 +279,7 @@ namespace Webserver
                 case "login":      loginMethod(sPostMethod, dPostData, sRequestedFile, sRequest, sHttpVersion, sClientIP, sslStream); break;
                 case "createuser": handleGetRequest(sRequest, sHttpVersion, sClientIP, sslStream); break;
                 case "new":        createMethod(sPostMethod, dPostData, sRequestedFile, sRequest, sHttpVersion, sClientIP, sslStream); break;
+                case "update": ; break; // update settings
                 default: SendErrorPage(404, sHttpVersion, sslStream); break;
             }
         }
@@ -291,6 +309,25 @@ namespace Webserver
             {
                 //SendErrorPage(400, sHttpVersion, sslStream);
             }
+        }
+
+        private void buildAdminPage(User user, String sHttpVersion, SslStream sslStream)
+        {
+            String sAdminPagePath = "";
+            if (user.UserRight == UserRights.ADMIN)
+            {
+                sAdminPagePath = "admin.html";
+            }
+            else
+            {
+                sAdminPagePath = "user.html";
+            }
+
+            String sLocalPath        = _fileModule.GetLocalPath("control");
+            String sPhysicalFilePath = Path.Combine(sLocalPath, sAdminPagePath);
+            String sPageHTML         = _fileModule.GetFileString(sPhysicalFilePath);
+
+
         }
     }
 }
