@@ -211,7 +211,7 @@ namespace Webserver
             {
                 if ((user = _sessionModule.CheckIPSession(sClientIP)) != null)
                 {
-                    handleGetRequest("/", sHttpVersion, sClientIP, sslStream);
+                    handleGetRequest("GET /", sHttpVersion, sClientIP, sslStream);
                 }
             }
 
@@ -275,7 +275,8 @@ namespace Webserver
         {
             switch(sPostMethod)
             {
-                case "info":       loginMethod(sPostMethod, dPostData, sRequestedFile, sRequest, sHttpVersion, sClientIP, sslStream); break; // from login to info
+                case "info": if (dPostData.Count < 3) loginMethod(sPostMethod, dPostData, sRequestedFile, sRequest, sHttpVersion, sClientIP, sslStream); else createMethod(sPostMethod, dPostData, sRequestedFile, sRequest, sHttpVersion, sClientIP, sslStream); break; // from login to info
+                case "controlpanel": loginMethod(sPostMethod, dPostData, sRequestedFile, sRequest, sHttpVersion, sClientIP, sslStream); break;
                 case "login":      loginMethod(sPostMethod, dPostData, sRequestedFile, sRequest, sHttpVersion, sClientIP, sslStream); break;
                 case "createuser": handleGetRequest(sRequest, sHttpVersion, sClientIP, sslStream); break;
                 case "new":        createMethod(sPostMethod, dPostData, sRequestedFile, sRequest, sHttpVersion, sClientIP, sslStream); break;
