@@ -11,6 +11,12 @@ namespace Webserver
 {
     class Program
     {
+        private static IPublicSettingsModule _settingsModule;
+        private static SessionModule         _sessionModule;
+        private static MySqlModule           _mysqlModule;
+
+        private static Thread _controlServerThread;
+        private static Thread _webServerThread;
         static void Main(string[] args)
         {
             Console.CancelKeyPress += delegate
@@ -18,18 +24,39 @@ namespace Webserver
                 Environment.Exit(0);
             };
 
-            IPublicSettingsModule settingsModule = new SettingsModule();
+            // Set modules
+            _settingsModule = new SettingsModule();
+            _mysqlModule = new MySqlModule();
+            _sessionModule = new SessionModule(_mysqlModule);
 
-            MySqlModule mysqlModule = new MySqlModule();
-            SessionModule sessionModule = new SessionModule(mysqlModule);
-            
-            //Create threads for each server
-            Thread controlServerThread = new Thread(() => new ControlServer(settingsModule, sessionModule));
-            controlServerThread.Start();
-            Thread webServerThread = new Thread(() => new Server(settingsModule));
-            webServerThread.Start();
+            // Add settings event listener
+            _settingsModule.SettingsUpdated += restartServers;
+
+            initServers(_settingsModule);
 
             Console.WriteLine("To exit press ctrl+c");
+        }
+
+        private static void initServers(IPublicSettingsModule settingsModule)
+        {
+            
+            //Create threads for each server
+            _controlServerThread = new Thread(() => new ControlServer(_settingsModule, _sessionModule));
+            _controlServerThread.Start();
+            
+            _webServerThread = new Thread(() => new Server(_settingsModule));
+            _webServerThread.Start();
+        }
+
+        private static void restartServers(object sender, Boolean settingsSuccess)
+        {
+            Console.WriteLine("Restarting Servers");
+
+            _controlServerThread.Abort();
+            _webServerThread.Abort();
+
+            // Restart servers to reflect settings
+            initServers(_settingsModule);
         }
     }
 }

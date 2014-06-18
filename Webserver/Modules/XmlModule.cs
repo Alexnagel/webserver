@@ -12,6 +12,7 @@ namespace Webserver.Modules
     class XmlModule
     {
         private XmlDocument doc;
+        private String filePath;
 
         public XmlModule()
         {
@@ -23,6 +24,7 @@ namespace Webserver.Modules
             try
             {
                 doc.Load(filePath);
+                this.filePath = filePath;
             }
             catch(Exception e)
             {
@@ -63,7 +65,12 @@ namespace Webserver.Modules
         {
             XmlNode node = doc.DocumentElement.SelectSingleNode("//" + elementName);
             if (node != null)
-                node.Value = value;
+                node.FirstChild.InnerText = value;
+        }
+
+        public void Save()
+        {
+            doc.Save(filePath);
         }
 
         public void createSettingsXML(String filepath, Dictionary<String, String> settings, Dictionary<String, String> MIMETypes)

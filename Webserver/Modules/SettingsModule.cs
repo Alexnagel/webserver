@@ -77,7 +77,7 @@ namespace Webserver.Modules
 
         public void SetWebroot(string rootDirectory)
         {
-            throw new NotImplementedException();
+            xmlModule.setElement("WebrootDirectory", rootDirectory);
         }
 
         public string GetWebroot()
@@ -85,9 +85,9 @@ namespace Webserver.Modules
             return xmlModule.getElement("WebrootDirectory");
         }
 
-        public void SetDefaultPage(List<string> defaultPages)
+        public void SetDefaultPage(String defaultPages)
         {
-            throw new NotImplementedException();
+            xmlModule.setElement("DefaultPage", defaultPages);
         }
 
         public List<string> GetDefaultPage()
@@ -115,10 +115,21 @@ namespace Webserver.Modules
             return defaultPages;
         }
 
-        public bool SaveSettings()
+        public void SaveSettings()
         {
-            throw new NotImplementedException();
+            xmlModule.Save();
+            OnSettingsUpdated();
         }
+
+        public event EventHandler<Boolean> SettingsUpdated;
+        
+        protected virtual void OnSettingsUpdated()
+        {
+            EventHandler<Boolean> handler = SettingsUpdated;
+            if (handler != null)
+                handler(this, true);
+        }
+
 #endregion
 
         #region Private Server Settings
@@ -130,6 +141,21 @@ namespace Webserver.Modules
         public List<string> getAllowedVirtualDirs()
         {
             throw new NotImplementedException();
+        }
+
+        public Dictionary<string, string> GetSettings()
+        {
+            Dictionary<String, String> dSettings = new Dictionary<String, String>();
+
+            dSettings.Add("webport", GetWebPort().ToString());
+            dSettings.Add("controlport", GetControlPort().ToString());
+            dSettings.Add("webroot", GetWebroot());
+            dSettings.Add("defaultpage", xmlModule.getElement("DefaultPage"));
+
+            String sAllowedBrowsing = GetAllowedDirectoryBrowsing() ? "checked" : "";
+            dSettings.Add("directorybrowsing", sAllowedBrowsing);
+
+            return dSettings;
         }
         #endregion
     }

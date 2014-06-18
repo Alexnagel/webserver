@@ -10,6 +10,7 @@ using System.Security.Cryptography.X509Certificates;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Web;
 using Webserver.Enums;
 using Webserver.Interfaces;
 using Webserver.Models;
@@ -219,12 +220,18 @@ namespace Webserver
                 else if (sRequestedFile.Equals("admin.html") && user.UserRight != UserRights.ADMIN)
                     SendErrorPage(404, sHttpVersion, sslStream);
             } 
-            else
+            else if ((user = _sessionModule.CheckIPSession(sClientIP)) != null && sRequestedFile.Equals("login.html"))
             {
-                if ((user = _sessionModule.CheckIPSession(sClientIP)) != null && !sRequestedFile.Equals("login.html") && mimeType.Equals("text/html"))
-                {
-                    handleGetRequest("GET /", sHttpVersion, sClientIP, sslStream);
-                }
+                if (user.UserRight == UserRights.ADMIN)
+                    handleGetRequest("GET /admin.html", sHttpVersion, sClientIP, sslStream);
+                else
+                    handleGetRequest("GET /user.html", sHttpVersion, sClientIP, sslStream);
+            }
+
+            switch(sRequestedFile)
+            {
+                case "user.html":
+                case "admin.html": buildAdminPage(user, sHttpVersion, sslStream); return;
             }
 
             // File to bytes
@@ -266,10 +273,7 @@ namespace Webserver
             // Replace the escaped slashes
             sRequest.Replace("\\", "/");
 
-            if ((sRequest.IndexOf(".") < 1) && (!sRequest.EndsWith("/")))
-                sRequest += "/";
-
-            String sRequestedFile = sRequest.Substring(sRequest.LastIndexOf("/") + 1);
+            String sRequestedFile = sRequest.Substring(sRequest.IndexOf("/"));
             if (String.IsNullOrWhiteSpace(sRequestedFile))
             {
                 sPostMethod = "login";
@@ -292,7 +296,7 @@ namespace Webserver
                 case "login":      loginMethod(sPostMethod, dPostData, sRequestedFile, sRequest, sHttpVersion, sClientIP, sslStream); break;
                 case "createuser": handleGetRequest(sRequest, sHttpVersion, sClientIP, sslStream); break;
                 case "new":        createMethod(sPostMethod, dPostData, sRequestedFile, sRequest, sHttpVersion, sClientIP, sslStream); break;
-                case "update": ; break; // update settings
+                case "save":       saveSettings(dPostData, sHttpVersion, sslStream); break; // update settings
                 default: SendErrorPage(404, sHttpVersion, sslStream); break;
             }
         }
@@ -316,17 +320,18 @@ namespace Webserver
             User loggedInUser = _sessionModule.LoginUser(sClientIP, username, password, out warning);
             if(warning == Warning.NONE && username != null)
             {
-                handleGetRequest(sRequest, sHttpVersion, sClientIP, sslStream);
+                buildAdminPage(loggedInUser, sHttpVersion, sslStream);
             }
             else
             {
-                //SendErrorPage(400, sHttpVersion, sslStream);
+                SendErrorPage(400, sHttpVersion, sslStream);
             }
         }
 
         private void buildAdminPage(User user, String sHttpVersion, SslStream sslStream)
         {
             String sAdminPagePath = "";
+            Dictionary<String, String> dSettings = _serverSettingsModule.GetSettings();
             if (user.UserRight == UserRights.ADMIN)
             {
                 sAdminPagePath = "admin.html";
@@ -337,10 +342,33 @@ namespace Webserver
             }
 
             String sLocalPath        = _fileModule.GetLocalPath("control");
-            String sPhysicalFilePath = Path.Combine(sLocalPath, sAdminPagePath);
+            String sPhysicalFilePath = _fileModule.CombinePaths(sLocalPath, sAdminPagePath);
             String sPageHTML         = _fileModule.GetFileString(sPhysicalFilePath);
 
+            foreach (KeyValuePair<String, String> setting in dSettings)
+                sPageHTML = sPageHTML.Replace("{{" + setting.Key + "}}", setting.Value);
 
+            byte[] bPage = Encoding.ASCII.GetBytes(sPageHTML);
+            SendHeader(sHttpVersion, "", bPage.Length, "200 OK", sslStream);
+            SendToBrowser(bPage, sslStream);
+        }
+
+        private void saveSettings(Dictionary<String, String> dPostdata, String sHttpVersion, SslStream sslStream)
+        {
+            _publicSettingsModule.SetWebPort(int.Parse(dPostdata["webport"]));
+            _publicSettingsModule.SetControlPort(int.Parse(dPostdata["controlport"]));
+
+            _publicSettingsModule.SetWebroot(HttpUtility.UrlDecode(dPostdata["webroot"]));
+            _publicSettingsModule.SetDefaultPage(HttpUtility.UrlDecode(dPostdata["defaultpage"]));
+
+            if (dPostdata.ContainsKey("directorybrowsing"))
+            {
+                _publicSettingsModule.SetAllowedDirectoryBrowsing(true);
+            }
+            else
+                _publicSettingsModule.SetAllowedDirectoryBrowsing(false);
+
+            _publicSettingsModule.SaveSettings();
         }
     }
 }

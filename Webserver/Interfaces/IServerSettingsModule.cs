@@ -11,5 +11,7 @@ namespace Webserver.Interfaces
         Dictionary<String, String> getAllowedMIMETypes();
 
         List<String> getAllowedVirtualDirs();
+
+        Dictionary<String, String> GetSettings();
     }
 }

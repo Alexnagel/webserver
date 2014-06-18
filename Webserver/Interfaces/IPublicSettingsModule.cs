@@ -24,12 +24,14 @@ namespace Webserver.Interfaces
 
         String GetWebroot();
 
-        void SetDefaultPage(List<String> defaultPages);
+        void SetDefaultPage(String defaultPages);
 
         List<String> GetDefaultPage();
 
         List<String> GetControlDefaultPage();
 
-        Boolean SaveSettings();
+        void SaveSettings();
+
+        event EventHandler<Boolean> SettingsUpdated; 
     }
 }
