@@ -39,11 +39,10 @@ namespace Webserver
 
         private static void initServers(IPublicSettingsModule settingsModule)
         {
-            
             //Create threads for each server
             _controlServerThread = new Thread(() => new ControlServer(_settingsModule, _sessionModule));
             _controlServerThread.Start();
-            
+
             _webServerThread = new Thread(() => new Server(_settingsModule));
             _webServerThread.Start();
         }
@@ -51,9 +50,6 @@ namespace Webserver
         private static void restartServers(object sender, Boolean settingsSuccess)
         {
             Console.WriteLine("Restarting Servers");
-
-            _controlServerThread.Abort();
-            _webServerThread.Abort();
 
             // Restart servers to reflect settings
             initServers(_settingsModule);

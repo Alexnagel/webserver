@@ -42,6 +42,7 @@ namespace Webserver
 
             // set the settingsModules
             _publicSettingsModule = settingsModule;
+            _publicSettingsModule.SettingsUpdated += settingsChanged;
             _serverSettingsModule = new SettingsModule();
             _serverIP = IPAddress.Parse("127.0.0.1");
 
@@ -63,6 +64,11 @@ namespace Webserver
             listenForClients();
         }
 
+        public void CloseListener()
+        {
+            _tcpListener.Stop();
+        }
+
         private void listenForClients()
         {
             _tcpListener.Start();
@@ -72,13 +78,21 @@ namespace Webserver
 
             while (_isRunning)
             {
-                _connectionSemaphore.WaitOne();
-                // Accept clients
-                Socket client = _tcpListener.AcceptSocket();
+                try
+                {
+                    _connectionSemaphore.WaitOne();
+                    // Accept clients
+                    Socket client = _tcpListener.AcceptSocket();
 
-                // Create client thread
-                Thread clientThread = new Thread(new ParameterizedThreadStart(handleClient));
-                clientThread.Start(client);
+                    // Create client thread
+                    Thread clientThread = new Thread(new ParameterizedThreadStart(handleClient));
+                    clientThread.Start(client);
+                }
+                catch(Exception)
+                {
+                    //listener closed
+                    return;
+                }
             }
         }
 
@@ -206,6 +220,11 @@ namespace Webserver
             byte[] bFileBytes = Encoding.ASCII.GetBytes(sDirBrowsingTemplate);
             SendHeader(sHttpVersion, "", bFileBytes.Length, "200 OK", clientSocket);
             SendToBrowser(bFileBytes, clientSocket);
+        }
+
+        private void settingsChanged(object sender, Boolean settingsSuccess)
+        {
+            CloseListener();
         }
     }
 }

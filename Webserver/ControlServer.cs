@@ -22,6 +22,7 @@ namespace Webserver
     {
         private const string CERTIFICATE_PATH = @"Data\webserverCA.pfx";
         private const string CERTIFICATE_PASSWORD = "webserver";
+        private const string SETTINGS_CHANGED_PAGE = @"Data\Templates\Settingschanged.html";
 
         // set threads
         private const int INIT_THREADS = 20;
@@ -53,6 +54,8 @@ namespace Webserver
 
         private MySqlModule _mySqlModule;
 
+        private Boolean _settingsChanged;
+
         public ControlServer(IPublicSettingsModule settingsModule, SessionModule sessionModule)
         {
             // set the semaphore
@@ -76,6 +79,8 @@ namespace Webserver
 
             certificate = new X509Certificate2(CERTIFICATE_PATH, CERTIFICATE_PASSWORD);
 
+            _settingsChanged = false;
+
             // set allowed mimetypes
             _allowedMimeTypes = _serverSettingsModule.getAllowedMIMETypes();
             _listenPort = settingsModule.GetControlPort();
@@ -83,6 +88,11 @@ namespace Webserver
             _isRunning = true;
             _tcpListener = new TcpListener(_serverIP, _listenPort);
             ListenForClients();
+        }
+
+        public void CloseListener()
+        {
+            _tcpListener.Stop();
         }
 
         private void ListenForClients()
@@ -93,12 +103,20 @@ namespace Webserver
 
             while (_isRunning)
             {
-                _connectionSemaphore.WaitOne();
-                TcpClient tcpclient = _tcpListener.AcceptTcpClient();
+                try
+                {
+                    _connectionSemaphore.WaitOne();
+                    TcpClient tcpclient = _tcpListener.AcceptTcpClient();
 
-                Thread clientThread = new Thread(new ParameterizedThreadStart(handleClient));
-                clientThread.Start(tcpclient);
+                    Thread clientThread = new Thread(new ParameterizedThreadStart(handleClient));
+                    clientThread.Start(tcpclient);
+                }
+                catch (Exception)
+                {
+                    //listening stopped
+                }
             }
+            _publicSettingsModule.SaveSettings();
         }
 
         private void handleClient(object client)
@@ -146,6 +164,12 @@ namespace Webserver
 
             sslStream.Close();
             _connectionSemaphore.Release();
+
+            if (_settingsChanged)
+            {
+                _isRunning = false;
+                CloseListener();
+            }
         }
 
         private String readStream(SslStream stream)
@@ -368,7 +392,16 @@ namespace Webserver
             else
                 _publicSettingsModule.SetAllowedDirectoryBrowsing(false);
 
-            _publicSettingsModule.SaveSettings();
+            _settingsChanged = true;
+
+            String sSettingsChangedPath = Path.Combine(Environment.CurrentDirectory, SETTINGS_CHANGED_PAGE);
+            String sSettingsChanged = "";
+            using (StreamReader sr = new StreamReader(sSettingsChangedPath))
+                sSettingsChanged = sr.ReadToEnd();
+
+            byte[] bPage = Encoding.ASCII.GetBytes(sSettingsChanged);
+            SendHeader(sHttpVersion, "", bPage.Length, "200 OK", sslStream);
+            SendToBrowser(bPage, sslStream);
         }
     }
 }
