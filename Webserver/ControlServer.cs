@@ -171,13 +171,19 @@ namespace Webserver
                     case "POST": handlePostRequest(sBuffer, sHttpVersion, sClientIP, sslStream); break;
                     default: SendErrorPage(400, sHttpVersion, sslStream); break;
                 }
+
+                // response time
+                stopWatch.Stop();
+                TimeSpan ts = stopWatch.Elapsed;
+                string newDate = DateTime.Now.ToString("yyyy-MM-dd HH':'mm':'ss");
+                string elapsedTime = ts.Milliseconds.ToString();
+                WriteLog(_serverIP.ToString(), newDate, elapsedTime, sBuffer);
             }
-            // response time
-            stopWatch.Stop();
-            TimeSpan ts = stopWatch.Elapsed;
-            string newDate = DateTime.Now.ToString("yyyy-MM-dd HH':'mm':'ss");
-            string elapsedTime = ts.Milliseconds.ToString();
-            WriteLog(_serverIP.ToString(), newDate, elapsedTime, sBuffer);
+            else
+            {
+                stopWatch.Stop();
+            }
+            
 
             sslStream.Close();
             _connectionSemaphore.Release();

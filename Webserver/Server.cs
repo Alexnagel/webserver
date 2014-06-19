@@ -148,12 +148,18 @@ namespace Webserver
                         case "POST": handlePostRequest(sBuffer, sHttpVersion, stream); break;
                         default:     SendErrorPage(400, sHttpVersion, stream); return;
                     }
+
+                    // response time
+                    stopWatch.Stop();
+                    TimeSpan ts = stopWatch.Elapsed;
+                    string newDate = DateTime.Now.ToString("yyyy-MM-dd HH':'mm':'ss");
+                    string elapsedTime = ts.Milliseconds.ToString();
+                    WriteLog(_serverIP.ToString(), newDate, elapsedTime, sBuffer);
                 }
-                stopWatch.Stop();
-                TimeSpan ts = stopWatch.Elapsed;
-                string newDate = DateTime.Now.ToString("yyyy-MM-dd HH':'mm':'ss");
-                string elapsedTime = ts.Milliseconds.ToString();
-                WriteLog(_serverIP.ToString(), newDate, elapsedTime, sBuffer);
+                else
+                {
+                    stopWatch.Stop();
+                }
             }
             socketClient.Close();
             _connectionSemaphore.Release();
