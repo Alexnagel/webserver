@@ -100,8 +100,8 @@ namespace Webserver
         {
             Socket socketClient = (Socket)client;
 
-            /*Stopwatch stopWatch = new Stopwatch();
-            stopWatch.Start();*/
+            Stopwatch stopWatch = new Stopwatch();
+            stopWatch.Start();
             if (socketClient.Connected)
             {
                 Byte[] receivedBytes = new Byte[1024];
@@ -132,13 +132,26 @@ namespace Webserver
                         default: SendErrorPage(400, sHttpVersion, stream); return;
                     }
                 }
-                /*stopWatch.Stop();
+                stopWatch.Stop();
                 TimeSpan ts = stopWatch.Elapsed;
                 string newDate = DateTime.Now.ToString("yyyy-MM-dd HH':'mm':'ss");
                 string elapsedTime = ts.Milliseconds.ToString();
-                Console.WriteLine("LOG - IP : " + _serverIP + ", Date : " + newDate + ", responsetime : " + elapsedTime + ", URL : ");*/
+                writeLog(_serverIP.ToString(), newDate, elapsedTime, sBuffer);
+                
+                Console.WriteLine("LOG - IP : " + _serverIP + ", Date : " + newDate + ", responsetime : " + elapsedTime + ", URL : ");
             }
             _connectionSemaphore.Release();
+        }
+
+        private void writeLog(String _serverIP, String newDate, String elapsedTime, String sBuffer)
+        {
+            int iStartPos = sBuffer.IndexOf("HTTP", 1);
+            String request = sBuffer.Substring(0, iStartPos - 1);
+            String sDirectoryName = request.Substring(sBuffer.IndexOf("/"), request.LastIndexOf("/") - 3);
+            String sRequestedFile = request.Substring(request.LastIndexOf("/") + 1);
+            String URL = _serverIP + sDirectoryName + sRequestedFile;
+            String newLog = _serverIP + ";" + newDate + ";" + elapsedTime + ";" + URL;
+            _logModule.setLog(newLog);
         }
 
         private void handleGetRequest(String sRequest, String sHttpVersion, Stream clientSocket)

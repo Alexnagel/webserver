@@ -4,32 +4,121 @@ using System.IO;
 using System.Linq;
 using System.Net.Sockets;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace Webserver.Modules
 {
     class LogModule
     {
-        private String _serverIP;
+        // for all the logs
+        private string[] logs;
+        private const int SIZE = 20;
 
+        private int count;
+        private int getPosition, putPosition;
+
+        private const string LOG_FILE = @"Data\Logging\log.txt";
         public LogModule()
         {
-            this._serverIP = "";
+            
         }
 
-        public void writeInfo(ref Socket client, String sDirectoryName, String sRequestedFile, String webserverRoot)
+        public void Init()
         {
-            Socket socketClient = (Socket)client;
-            Console.WriteLine("LOG : " + socketClient.AddressFamily + " " + socketClient.LocalEndPoint + sDirectoryName + sRequestedFile);
-            //StreamWriter sw = new StreamWriter(webserverRoot + @"\Log\log.txt", true);
-            //String line = "LOG : " + DateTime.Now + " " + client.LocalEndPoint + sDirectoryName + sRequestedFile;
-            //sw.WriteLine(line);
-            //sw.Close();
+            logs = new string[SIZE];
+
+            // new thread for write log
+            Thread _writeThread = new Thread(new ThreadStart(writeLog));
+            _writeThread.Start();
+
         }
 
-        public List<String> GetAllLogs()
+        public void setLog(String newLog)
         {
-            return new List<string>();
+            push(newLog);
+        }
+
+        public List<string> GetAllLogs()
+        {
+            String readLine = "";
+            List<string> output = new List<string>();
+            StreamReader sr = new StreamReader(Path.Combine(Environment.CurrentDirectory, LOG_FILE));
+            while((readLine = sr.ReadLine()) != null)
+            {
+                output.Add(readLine);
+            }
+            return output;
+        }
+
+        private void push(String newLog)
+        {
+            Monitor.Enter(logs);
+            try
+            {
+                while(count == logs.Length)
+                {
+                    Monitor.Wait(logs);
+                }
+
+                logs[putPosition] = newLog;
+                putPosition = (putPosition + 1) % SIZE;
+                count++;
+            }
+            finally
+            {
+                Monitor.Pulse(logs);
+                Monitor.Exit(logs);
+            }
+            
+        }
+
+        private String pop()
+        {
+            Monitor.Enter(logs);
+            try
+            {
+                while (count <= 0)
+                {
+                    Monitor.Wait(logs);
+                }
+
+                String entry = logs[getPosition];
+                getPosition = (getPosition + 1) % SIZE;
+                count--;
+
+                return entry;
+            }
+            finally
+            {
+                Monitor.Pulse(logs);
+                Monitor.Exit(logs);
+            }
+        }
+
+        private void writeLog()
+        {
+            while(true)
+            {
+                Monitor.Enter(logs);
+                try
+                {
+                    while (count == 0)
+                    {
+                        Monitor.Wait(logs);
+                    }
+
+                    String entry = pop();
+                    StreamWriter sw = new StreamWriter(Path.Combine(Environment.CurrentDirectory, LOG_FILE), true);
+                    sw.WriteLine(entry);
+                    sw.Close();
+                }
+                finally
+                {
+                    Monitor.Pulse(logs);
+                    Monitor.Exit(logs);
+                }
+            }
         }
     }
 }

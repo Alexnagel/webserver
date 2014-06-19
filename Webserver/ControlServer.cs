@@ -479,7 +479,7 @@ namespace Webserver
             String sLogRow = _fileModule.GetFileString(sLogRowPath);
             String sLogRows = "";
 
-            List<String> lLogs = _logModule.GetAllLogs();
+            List<string> lLogs = _logModule.GetAllLogs();
             foreach(String log in lLogs)
             {
                 String[] saLog = log.Split(';');

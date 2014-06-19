@@ -80,7 +80,6 @@
     <None Include="Properties\app.manifest" />
   </ItemGroup>
   <ItemGroup>
-    <Folder Include="Data\Logging\" />
     <Folder Include="Services\" />
   </ItemGroup>
   <ItemGroup>
@@ -118,6 +117,9 @@
     <EmbeddedResource Include="Data\Templates\UserRow.html">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </EmbeddedResource>
+  </ItemGroup>
+  <ItemGroup>
+    <Content Include="Data\Logging\log.txt" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
