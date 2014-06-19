@@ -18,6 +18,8 @@ namespace Webserver
 
         private static Thread _controlServerThread;
         private static Thread _webServerThread;
+        private static Thread _loggerThread;
+
         static void Main(string[] args)
         {
             Console.CancelKeyPress += delegate
@@ -47,6 +49,8 @@ namespace Webserver
 
             _webServerThread = new Thread(() => new Server(_settingsModule, _logModule));
             _webServerThread.Start();
+
+            _loggerThread = new Thread(() => new Logger());
         }
 
         private static void restartServers(object sender, Boolean settingsSuccess)
