@@ -50,7 +50,7 @@ namespace Webserver
             _webServerThread = new Thread(() => new Server(_settingsModule, _logModule));
             _webServerThread.Start();
 
-            _loggerThread = new Thread(() => new Logger());
+            //_loggerThread = new Thread(() => new Logger());
         }
 
         private static void restartServers(object sender, Boolean settingsSuccess)

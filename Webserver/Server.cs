@@ -7,6 +7,7 @@ using System.Net;
 using System.Net.Security;
 using System.Net.Sockets;
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 using Webserver.Interfaces;
@@ -44,7 +45,7 @@ namespace Webserver
             _publicSettingsModule = settingsModule;
             _publicSettingsModule.SettingsUpdated += settingsChanged;
             _serverSettingsModule = new SettingsModule();
-            _serverIP = IPAddress.Parse("127.0.0.1");
+            _serverIP = IPAddress.Parse(LocalIPAddress());
 
             // Set the filemodule
             _fileModule = new FileModule();
@@ -62,6 +63,22 @@ namespace Webserver
             _isRunning = true;
             _tcpListener = new TcpListener(_serverIP, _listenPort);
             listenForClients();
+        }
+
+        public string LocalIPAddress()
+        {
+            IPHostEntry host;
+            string localIP = "";
+            host = Dns.GetHostEntry(Dns.GetHostName());
+            foreach (IPAddress ip in host.AddressList)
+            {
+                if (ip.AddressFamily == AddressFamily.InterNetwork)
+                {
+                    localIP = ip.ToString();
+                    break;
+                }
+            }
+            return localIP;
         }
 
         public void CloseListener()
@@ -128,7 +145,7 @@ namespace Webserver
                     switch (requestType)
                     {
                         case "GET":  handleGetRequest(sBuffer.Substring(0, iStartPos - 1), sHttpVersion, stream); break;
-                        case "POST": handlePostRequest(sBuffer.Substring(0, iStartPos - 1), sHttpVersion, stream); break;
+                        case "POST": handlePostRequest(sBuffer, sHttpVersion, stream); break;
                         default:     SendErrorPage(400, sHttpVersion, stream); return;
                     }
                 }
@@ -196,12 +213,37 @@ namespace Webserver
 
         private void handlePostRequest(String sRequest, String sHttpVersion, Stream clientSocket)
         {
+            // Get the post data content length
+            int iStartPos      = sRequest.IndexOf("Content-Length: ") + 16;
+            int iEndPos        = sRequest.IndexOf('\r', iStartPos);
+            int iContentLength = int.Parse(sRequest.Substring(iStartPos, iEndPos - iStartPos));
+
+            // Get the post data string
+            String sPostData = sRequest.Substring(sRequest.LastIndexOf('\n') + 1, iContentLength);
+            
+            // Split post data and create dictionary of that data, key = input name, value = input value
+            String[] saPostData = sPostData.Split('&');
+            Dictionary<String, String> dPostData = new Dictionary<String, String>();
+            for (int i = 0; i < saPostData.Length; i++ )
+            {
+                if (!string.IsNullOrEmpty(saPostData[i]))
+                {
+                    String[] saSeperateData = saPostData[i].Split('=');
+                    dPostData.Add(saSeperateData[0], saSeperateData[1]);
+                }
+            }
+
+            // Get post method
+            String sPostMethod = "";
+            int iPostStartPos = sRequest.IndexOf("HTTP", 1);
+            sRequest = sRequest.Substring(0, iPostStartPos - 1);
+
             sRequest.Replace("\\", "/");
 
             if ((sRequest.IndexOf(".") < 1) && (!sRequest.EndsWith("/")))
                 sRequest += "/";
 
-            String sDirectoryName = sRequest.Substring(sRequest.IndexOf("/"), sRequest.LastIndexOf("/") - 3);
+            String sDirectoryName = sRequest.Substring(sRequest.IndexOf("/"), sRequest.LastIndexOf("/") - 4);
             String sRequestedFile = sRequest.Substring(sRequest.LastIndexOf("/") + 1);
 
             // Check if localpath exists
@@ -236,6 +278,9 @@ namespace Webserver
 
             // File to bytes
             String sPhysicalFilePath = Path.Combine(sLocalPath, sRequestedFile);
+            String sFile = _fileModule.GetFileString(sPhysicalFilePath);
+            sFile = templater(sFile, dPostData);
+
             byte[] bFileBytes = _fileModule.FileToBytes(sPhysicalFilePath);
 
             // save get info
@@ -274,6 +319,19 @@ namespace Webserver
         private void settingsChanged(object sender, Boolean settingsSuccess)
         {
             CloseListener();
+        }
+
+        private String templater(String sFile, Dictionary<string, string> dPostData)
+        {
+            Regex regex = new Regex(@"{{(?<TagName>\w*)}}");
+            
+            foreach (string tag in dPostData.Keys)
+            {
+                sFile = regex.Replace(sFile,
+                    m => (m.Groups["TagName"].Value == tag ?
+                        dPostData[tag].ToString() : m.Value));
+            }
+            return sFile;
         }
     }
 }
