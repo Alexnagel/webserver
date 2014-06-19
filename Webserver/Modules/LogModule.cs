@@ -101,6 +101,7 @@ namespace Webserver.Modules
             while(true)
             {
                 Monitor.Enter(logs);
+                StreamWriter sw = null;
                 try
                 {
                     while (count == 0)
@@ -109,9 +110,14 @@ namespace Webserver.Modules
                     }
 
                     String entry = pop();
-                    StreamWriter sw = new StreamWriter(Path.Combine(Environment.CurrentDirectory, LOG_FILE), true);
+                    sw = new StreamWriter(Path.Combine(Environment.CurrentDirectory, LOG_FILE), true);
                     sw.WriteLine(entry);
                     sw.Close();
+                }
+                catch(IOException e)
+                {
+                    if (sw != null)
+                        sw.Close();
                 }
                 finally
                 {
