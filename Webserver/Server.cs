@@ -138,6 +138,7 @@ namespace Webserver
                 string elapsedTime = ts.Milliseconds.ToString();
                 Console.WriteLine("LOG - IP : " + _serverIP + ", Date : " + newDate + ", responsetime : " + elapsedTime + ", URL : ");*/
             }
+            socketClient.Close();
             _connectionSemaphore.Release();
         }
 
