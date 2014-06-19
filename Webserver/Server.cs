@@ -10,6 +10,7 @@ using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Web;
 using Webserver.Interfaces;
 using Webserver.Modules;
 
@@ -281,7 +282,7 @@ namespace Webserver
             String sFile = _fileModule.GetFileString(sPhysicalFilePath);
             sFile = templater(sFile, dPostData);
 
-            byte[] bFileBytes = _fileModule.FileToBytes(sPhysicalFilePath);
+            byte[] bFileBytes = Encoding.ASCII.GetBytes(sFile);
 
             // save get info
             String webServerRoot = _publicSettingsModule.GetWebroot();
@@ -329,7 +330,7 @@ namespace Webserver
             {
                 sFile = regex.Replace(sFile,
                     m => (m.Groups["TagName"].Value == tag ?
-                        dPostData[tag].ToString() : m.Value));
+                        HttpUtility.UrlDecode(dPostData[tag].ToString()) : m.Value));
             }
             return sFile;
         }

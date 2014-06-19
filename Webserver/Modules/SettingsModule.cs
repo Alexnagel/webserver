@@ -35,7 +35,8 @@ namespace Webserver.Modules
             {"xhtml", "application/xhtml+xml"},
             {"woff", "application/font-woff"},
             {"ttf", "application/x-font-truetype"},
-            {"svg", "image/svg+xml"}
+            {"svg", "image/svg+xml"},
+            {"txt", "text/plain"}
         };
 
         private XmlModule xmlModule;

@@ -75,6 +75,7 @@ namespace Webserver.Modules
 
         public void createSettingsXML(String filepath, Dictionary<String, String> settings, Dictionary<String, String> MIMETypes)
         {
+            this.filePath = filepath;
             if (!Directory.Exists(Path.GetDirectoryName(filepath)))
                 Directory.CreateDirectory(Path.GetDirectoryName(filepath));
 
