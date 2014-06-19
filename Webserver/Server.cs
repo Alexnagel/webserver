@@ -36,7 +36,7 @@ namespace Webserver
 
         // Dictionary for all mimetypes
         private Dictionary<string, string> _allowedMimeTypes;
-        public Server(IPublicSettingsModule settingsModule, LogModule logModule)
+        public Server(IPublicSettingsModule settingsModule, LogModule logModule) : base(logModule)
         {
             // set the semaphore
             _connectionSemaphore = new Semaphore(INIT_THREADS, MAX_THREADS);
@@ -153,24 +153,13 @@ namespace Webserver
                 TimeSpan ts = stopWatch.Elapsed;
                 string newDate = DateTime.Now.ToString("yyyy-MM-dd HH':'mm':'ss");
                 string elapsedTime = ts.Milliseconds.ToString();
-                writeLog(_serverIP.ToString(), newDate, elapsedTime, sBuffer);
-                
-                Console.WriteLine("LOG - IP : " + _serverIP + ", Date : " + newDate + ", responsetime : " + elapsedTime + ", URL : ");
+                WriteLog(_serverIP.ToString(), newDate, elapsedTime, sBuffer);
             }
             socketClient.Close();
             _connectionSemaphore.Release();
         }
 
-        private void writeLog(String _serverIP, String newDate, String elapsedTime, String sBuffer)
-        {
-            int iStartPos = sBuffer.IndexOf("HTTP", 1);
-            String request = sBuffer.Substring(0, iStartPos - 1);
-            String sDirectoryName = request.Substring(sBuffer.IndexOf("/"), request.LastIndexOf("/") - 3);
-            String sRequestedFile = request.Substring(request.LastIndexOf("/") + 1);
-            String URL = _serverIP + sDirectoryName + sRequestedFile;
-            String newLog = _serverIP + ";" + newDate + ";" + elapsedTime + ";" + URL;
-            _logModule.setLog(newLog);
-        }
+        
 
         private void handleGetRequest(String sRequest, String sHttpVersion, Stream clientSocket)
         {

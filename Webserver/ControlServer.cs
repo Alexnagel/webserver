@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Net;
@@ -62,7 +63,7 @@ namespace Webserver
 
         private Boolean _settingsChanged;
 
-        public ControlServer(IPublicSettingsModule settingsModule, SessionModule sessionModule, LogModule logModule)
+        public ControlServer(IPublicSettingsModule settingsModule, SessionModule sessionModule, LogModule logModule) : base(logModule)
         {
             // set the semaphore
             _connectionSemaphore = new Semaphore(INIT_THREADS, MAX_THREADS);
@@ -129,6 +130,9 @@ namespace Webserver
 
         private void handleClient(object client)
         {
+            Stopwatch stopWatch = new Stopwatch();
+            stopWatch.Start();
+
             TcpClient tcpclient = (TcpClient)client;
 
             IPEndPoint IPep = (IPEndPoint)tcpclient.Client.RemoteEndPoint;
@@ -169,6 +173,12 @@ namespace Webserver
                     default: SendErrorPage(400, sHttpVersion, sslStream); break;
                 }
             }
+            // response time
+            stopWatch.Stop();
+            TimeSpan ts = stopWatch.Elapsed;
+            string newDate = DateTime.Now.ToString("yyyy-MM-dd HH':'mm':'ss");
+            string elapsedTime = ts.Milliseconds.ToString();
+            WriteLog(_serverIP.ToString(), newDate, elapsedTime, sBuffer);
 
             sslStream.Close();
             _connectionSemaphore.Release();
@@ -195,7 +205,7 @@ namespace Webserver
                 }
                 catch (Exception e)
                 {
-                    // uh-oh, let's break the while 
+                    // break the while 
                     break;
                 }
 

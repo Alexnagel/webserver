@@ -36,7 +36,6 @@ namespace Webserver.Modules
             string connectionString;
             connectionString = "SERVER=" + server + ";" + "DATABASE=" +
             database + ";" + "UID=" + uid + ";" + "PASSWORD=" + password + ";";
-
             connection = new MySqlConnection(connectionString);
         }
 
@@ -54,7 +53,6 @@ namespace Webserver.Modules
                     case 0:
                         MessageBox.Show("Cannot connect to server.  Contact administrator");
                         break;
-
                     case 1045:
                         MessageBox.Show("Invalid username/password, please try again");
                         break;
