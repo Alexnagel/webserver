@@ -80,7 +80,6 @@
     <None Include="Properties\app.manifest" />
   </ItemGroup>
   <ItemGroup>
-    <Folder Include="Data\Logging\" />
     <Folder Include="Services\" />
   </ItemGroup>
   <ItemGroup>
@@ -120,6 +119,7 @@
     </EmbeddedResource>
   </ItemGroup>
   <ItemGroup>
+    <Content Include="Data\Logging\log.txt" />
     <EmbeddedResource Include="Data\Templates\LogRow.html">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </EmbeddedResource>

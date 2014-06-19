@@ -37,7 +37,7 @@ namespace Webserver
 
         // Dictionary for all mimetypes
         private Dictionary<string, string> _allowedMimeTypes;
-        public Server(IPublicSettingsModule settingsModule, LogModule logModule)
+        public Server(IPublicSettingsModule settingsModule, LogModule logModule) : base(logModule)
         {
             // set the semaphore
             _connectionSemaphore = new Semaphore(INIT_THREADS, MAX_THREADS);
@@ -118,8 +118,8 @@ namespace Webserver
         {
             Socket socketClient = (Socket)client;
 
-            /*Stopwatch stopWatch = new Stopwatch();
-            stopWatch.Start();*/
+            Stopwatch stopWatch = new Stopwatch();
+            stopWatch.Start();
             if (socketClient.Connected)
             {
                 Byte[] receivedBytes = new Byte[1024];
@@ -150,15 +150,17 @@ namespace Webserver
                         default:     SendErrorPage(400, sHttpVersion, stream); return;
                     }
                 }
-                /*stopWatch.Stop();
+                stopWatch.Stop();
                 TimeSpan ts = stopWatch.Elapsed;
                 string newDate = DateTime.Now.ToString("yyyy-MM-dd HH':'mm':'ss");
                 string elapsedTime = ts.Milliseconds.ToString();
-                Console.WriteLine("LOG - IP : " + _serverIP + ", Date : " + newDate + ", responsetime : " + elapsedTime + ", URL : ");*/
+                WriteLog(_serverIP.ToString(), newDate, elapsedTime, sBuffer);
             }
             socketClient.Close();
             _connectionSemaphore.Release();
         }
+
+        
 
         private void handleGetRequest(String sRequest, String sHttpVersion, Stream clientSocket)
         {

@@ -5,11 +5,18 @@ using System.Linq;
 using System.Net.Sockets;
 using System.Text;
 using System.Threading.Tasks;
+using Webserver.Modules;
 
 namespace Webserver
 {
     abstract class AbstractServer
     {
+        private LogModule _logModule;
+
+        public AbstractServer(LogModule logModule)
+        {
+            _logModule = logModule;
+        }
         public void SendHeader(string sHttpVersion, string sMIMEHeader, int iTotBytes, string sStatusCode, Stream networkStream)
         {
             String sBuffer = "";
@@ -70,6 +77,17 @@ namespace Webserver
 
             SendHeader(sHttpVersion, "", bMessage.Length, sErrorCode, networkStream);
             SendToBrowser(bMessage, networkStream);
+        }
+
+        public void WriteLog(String _serverIP, String newDate, String elapsedTime, String sBuffer)
+        {
+            int iStartPos = sBuffer.IndexOf("HTTP", 1);
+            String request = sBuffer.Substring(0, iStartPos - 1);
+            String sDirectoryName = request.Substring(sBuffer.IndexOf("/"), request.LastIndexOf("/") - 3);
+            String sRequestedFile = request.Substring(request.LastIndexOf("/") + 1);
+            String URL = _serverIP + sDirectoryName + sRequestedFile;
+            String newLog = _serverIP + ";" + newDate + ";" + elapsedTime + ";" + URL;
+            _logModule.setLog(newLog);
         }
     }
 }
