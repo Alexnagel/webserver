@@ -270,12 +270,15 @@ namespace Webserver
                     handleGetRequest("GET /user.html", sHttpVersion, sClientIP, sslStream);
             }
 
-            switch(sRequestedFile)
+            if ((user = _sessionModule.CheckIPSession(sClientIP)) != null)
             {
-                case "user.html":
-                case "admin.html": buildAdminPage(user, sHttpVersion, sslStream); return;
-                case "users.html": buildUserOverview(sHttpVersion, sslStream); return;
-                case "logs.html": buildLogsPage(sHttpVersion, sslStream); return;
+                switch (sRequestedFile)
+                {
+                    case "user.html":
+                    case "admin.html": buildAdminPage(user, sHttpVersion, sslStream); return;
+                    case "users.html": buildUserOverview(sHttpVersion, sslStream); return;
+                    case "logs.html": buildLogsPage(sHttpVersion, sslStream); return;
+                }
             }
 
             // File to bytes
