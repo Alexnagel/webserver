@@ -127,9 +127,9 @@ namespace Webserver
                     
                     switch (requestType)
                     {
-                        case "GET": handleGetRequest(sBuffer.Substring(0, iStartPos - 1), sHttpVersion, stream); break;
-                        case "POST": ; break;
-                        default: SendErrorPage(400, sHttpVersion, stream); return;
+                        case "GET":  handleGetRequest(sBuffer.Substring(0, iStartPos - 1), sHttpVersion, stream); break;
+                        case "POST": handlePostRequest(sBuffer.Substring(0, iStartPos - 1), sHttpVersion, stream); break;
+                        default:     SendErrorPage(400, sHttpVersion, stream); return;
                     }
                 }
                 /*stopWatch.Stop();
@@ -151,9 +151,6 @@ namespace Webserver
 
             String sDirectoryName = sRequest.Substring(sRequest.IndexOf("/"), sRequest.LastIndexOf("/") - 3);
             String sRequestedFile = sRequest.Substring(sRequest.LastIndexOf("/") + 1);
-
-            /*Console.WriteLine(sDirectoryName);
-            Console.WriteLine(sRequestedFile);*/
 
             // Check if localpath exists
             String sLocalPath = _fileModule.GetLocalPath(sDirectoryName);
@@ -191,7 +188,58 @@ namespace Webserver
 
             // save get info
             String webServerRoot = _publicSettingsModule.GetWebroot();
-            //_logModule.writeInfo(clientSocket, sDirectoryName, sRequestedFile, webServerRoot);
+
+            // Write data to the browser
+            SendHeader(sHttpVersion, mimeType, bFileBytes.Length, "200 OK", clientSocket);
+            SendToBrowser(bFileBytes, clientSocket);
+        }
+
+        private void handlePostRequest(String sRequest, String sHttpVersion, Stream clientSocket)
+        {
+            sRequest.Replace("\\", "/");
+
+            if ((sRequest.IndexOf(".") < 1) && (!sRequest.EndsWith("/")))
+                sRequest += "/";
+
+            String sDirectoryName = sRequest.Substring(sRequest.IndexOf("/"), sRequest.LastIndexOf("/") - 3);
+            String sRequestedFile = sRequest.Substring(sRequest.LastIndexOf("/") + 1);
+
+            // Check if localpath exists
+            String sLocalPath = _fileModule.GetLocalPath(sDirectoryName);
+            if (String.IsNullOrEmpty(sLocalPath))
+            {
+                SendErrorPage(404, sHttpVersion, clientSocket);
+                return;
+            }
+
+            // Check if file is given, get default file if not given
+            if (string.IsNullOrEmpty(sRequestedFile))
+            {
+                sRequestedFile = _fileModule.GetDefaultPage(sLocalPath);
+            }
+
+            if (String.IsNullOrWhiteSpace(sRequestedFile) && _publicSettingsModule.GetAllowedDirectoryBrowsing())
+            {
+                if (_publicSettingsModule.GetAllowedDirectoryBrowsing())
+                    createDirectoryBrowsing(sLocalPath, sDirectoryName, sHttpVersion, clientSocket);
+                else
+                    SendErrorPage(404, sHttpVersion, clientSocket);
+            }
+
+            // Check file mimetype
+            String mimeType = _fileModule.GetMimeType(sRequestedFile);
+            if (String.IsNullOrEmpty(mimeType))
+            {
+                SendErrorPage(404, sHttpVersion, clientSocket);
+                return;
+            }
+
+            // File to bytes
+            String sPhysicalFilePath = Path.Combine(sLocalPath, sRequestedFile);
+            byte[] bFileBytes = _fileModule.FileToBytes(sPhysicalFilePath);
+
+            // save get info
+            String webServerRoot = _publicSettingsModule.GetWebroot();
 
             // Write data to the browser
             SendHeader(sHttpVersion, mimeType, bFileBytes.Length, "200 OK", clientSocket);
