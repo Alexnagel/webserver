@@ -124,7 +124,6 @@ namespace Webserver
             {
                 Byte[] receivedBytes = new Byte[1024];
                 int i = socketClient.Receive(receivedBytes, receivedBytes.Length, 0);
-                Console.WriteLine(i);
                 string sBuffer = Encoding.ASCII.GetString(receivedBytes);
                 sBuffer = sBuffer.Trim('\0');
 
@@ -161,7 +160,6 @@ namespace Webserver
         }
 
         
-
         private void handleGetRequest(String sRequest, String sHttpVersion, Stream clientSocket)
         {
             sRequest.Replace("\\", "/");

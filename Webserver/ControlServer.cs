@@ -155,7 +155,6 @@ namespace Webserver
             }
 
             String sBuffer = readStream(sslStream);
-            Console.WriteLine(sBuffer);
 
             if (sBuffer.Length > 3)
             {
